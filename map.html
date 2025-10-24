@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Campus Navigator - Interactive Pathfinding</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 20px;
+      }
+
+      .container {
+        max-width: 1800px;
+        margin: 0 auto;
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        overflow: hidden;
+      }
+
+      .header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 30px;
+        text-align: center;
+      }
+
+      .header h1 {
+        font-size: 2.5em;
+        margin-bottom: 10px;
+      }
+
+      .main-content {
+        display: grid;
+        grid-template-columns: 380px 1fr;
+        gap: 0;
+        min-height: 800px;
+      }
+
+      .sidebar {
+        background: #f8f9fa;
+        padding: 25px;
+        border-right: 2px solid #e0e0e0;
+        overflow-y: auto;
+        max-height: 900px;
+      }
+
+      .map-container {
+        position: relative;
+        background: #fafafa;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .control-section {
+        margin-bottom: 20px;
+        padding: 20px;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      }
+
+      .control-section h3 {
+        color: #667eea;
+        margin-bottom: 15px;
+        font-size: 1.1em;
+      }
+
+      .input-group {
+        margin-bottom: 15px;
+      }
+
+      .input-group label {
+        display: block;
+        margin-bottom: 5px;
+        color: #555;
+        font-weight: 600;
+        font-size: 14px;
+      }
+
+      select,
+      input {
+        width: 100%;
+        padding: 12px;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 15px;
+        transition: border-color 0.3s;
+      }
+
+      select:focus,
+      input:focus {
+        outline: none;
+        border-color: #667eea;
+      }
+
+      .btn {
+        width: 100%;
+        padding: 15px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: transform 0.2s, box-shadow 0.2s;
+        margin-top: 10px;
+      }
+
+      .btn:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+      }
+
+      .btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
+      .btn-secondary {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      }
+
+      .directions {
+        margin-top: 15px;
+        max-height: 400px;
+        overflow-y: auto;
+      }
+
+      .direction-step {
+        padding: 12px;
+        background: white;
+        border-left: 4px solid #667eea;
+        margin-bottom: 10px;
+        border-radius: 5px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      }
+
+      .step-number {
+        background: #667eea;
+        color: white;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        flex-shrink: 0;
+        font-size: 14px;
+      }
+
+      .step-text {
+        flex: 1;
+        font-size: 14px;
+      }
+
+      .step-distance {
+        color: #888;
+        font-size: 0.85em;
+        font-weight: 600;
+      }
+
+      .total-distance {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 15px;
+        border-radius: 8px;
+        text-align: center;
+        font-size: 1.1em;
+        font-weight: bold;
+        margin-bottom: 15px;
+      }
+
+      canvas {
+        display: block;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      }
+
+      .zoom-controls {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        z-index: 100;
+      }
+
+      .zoom-btn {
+        width: 45px;
+        height: 45px;
+        background: white;
+        border: 2px solid #667eea;
+        border-radius: 8px;
+        font-size: 20px;
+        font-weight: bold;
+        color: #667eea;
+        cursor: pointer;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        transition: all 0.2s;
+      }
+
+      .zoom-btn:hover {
+        background: #667eea;
+        color: white;
+        transform: scale(1.1);
+      }
+
+      .legend {
+        background: white;
+        padding: 15px;
+        border-radius: 8px;
+      }
+
+      .legend h4 {
+        margin-bottom: 10px;
+        color: #667eea;
+        font-size: 14px;
+      }
+
+      .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 8px;
+        font-size: 13px;
+      }
+
+      .legend-color {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        border: 2px solid #333;
+      }
+
+      .legend-line {
+        width: 30px;
+        height: 4px;
+        border-radius: 2px;
+      }
+
+      .message {
+        padding: 12px;
+        border-radius: 8px;
+        margin-top: 10px;
+        font-size: 14px;
+        display: none;
+      }
+
+      .error-message {
+        background: #ff4444;
+        color: white;
+      }
+
+      .success-message {
+        background: #00c851;
+        color: white;
+      }
+
+      .info-message {
+        background: #33b5e5;
+        color: white;
+      }
+
+      .file-upload-section {
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+        border: 2px dashed #667eea;
+      }
+
+      .file-upload-section h3 {
+        color: #667eea;
+        margin-bottom: 15px;
+      }
+
+      .upload-btn {
+        background: #667eea;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 14px;
+        margin: 5px 0;
+        width: 100%;
+      }
+
+      .upload-btn:hover {
+        background: #5568d3;
+      }
+
+      .file-name {
+        font-size: 12px;
+        color: #666;
+        margin-top: 5px;
+        font-style: italic;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>🗺️ Campus Navigator</h1>
+        <p>Find the shortest path between any two locations</p>
+      </div>
+
+      <div class="main-content">
+        <div class="sidebar">
+          <!-- File Upload Section (Optional - files auto-load) -->
+          <div class="file-upload-section" id="uploadSection" style="display: none;">
+            <h3>📁 Load Different Map (Optional)</h3>
+            <label for="graphFile" class="upload-btn"
+              >1. Select Graph JSON File</label
+            >
+            <input
+              type="file"
+              id="graphFile"
+              accept=".json"
+              style="display: none"
+            />
+            <div class="file-name" id="graphFileName">No file selected</div>
+
+            <label for="imageFile" class="upload-btn" style="margin-top: 10px"
+              >2. Select Floor Plan Image</label
+            >
+            <input
+              type="file"
+              id="imageFile"
+              accept="image/*"
+              style="display: none"
+            />
+            <div class="file-name" id="imageFileName">No file selected</div>
+          </div>
+
+          <!-- Route Selection -->
+          <div class="control-section" id="routeSection">
+            <h3>📍 Select Your Route</h3>
+
+            <div class="input-group">
+              <label for="startNode">Starting Point:</label>
+              <select id="startNode">
+                <option value="">-- Select Start --</option>
+              </select>
+            </div>
+
+            <div class="input-group">
+              <label for="endNode">Destination:</label>
+              <select id="endNode">
+                <option value="">-- Select Destination --</option>
+              </select>
+            </div>
+
+            <button class="btn" id="findPathBtn" onclick="findPath()">
+              🚀 Find Shortest Path
+            </button>
+
+            <button class="btn btn-secondary" onclick="clearPath()">
+              🔄 Clear Path
+            </button>
+
+            <div class="message error-message" id="errorMessage"></div>
+            <div class="message success-message" id="successMessage"></div>
+          </div>
+
+          <!-- Directions -->
+          <div
+            class="control-section"
+            id="directionsSection"
+            style="display: none"
+          >
+            <h3>📋 Turn-by-Turn Directions</h3>
+            <div class="total-distance" id="totalDistance"></div>
+            <div class="directions" id="directionsList"></div>
+          </div>
+
+          <!-- Legend -->
+          <div class="control-section">
+            <div class="legend">
+              <h4>Legend:</h4>
+              <div class="legend-item">
+                <div class="legend-color" style="background: #4caf50"></div>
+                <span>Start Point</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-color" style="background: #f44336"></div>
+                <span>Destination</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-color" style="background: #ff9800"></div>
+                <span>Waypoint</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-line" style="background: #2196f3"></div>
+                <span>Shortest Path</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="map-container">
+          <div class="zoom-controls" id="zoomControls">
+            <button class="zoom-btn" onclick="zoomIn()">+</button>
+            <button class="zoom-btn" onclick="zoomReset()">⊙</button>
+            <button class="zoom-btn" onclick="zoomOut()">−</button>
+          </div>
+          <canvas id="mapCanvas"></canvas>
+          <div
+            class="message info-message"
+            id="infoMessage"
+            style="
+              position: absolute;
+              display: none;
+              top: 50%;
+              left: 50%;
+              transform: translate(-50%, -50%);
+              padding: 30px;
+              font-size: 16px;
+            "
+          >
+            Loading map...
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Load graph data as JavaScript -->
+    <script src="graph_data.js"></script>
+
+    <script>
+      // ==================== DIJKSTRA'S ALGORITHM ====================
+      class PriorityQueue {
+        constructor() {
+          this.values = [];
+        }
+
+        enqueue(val, priority) {
+          this.values.push({ val, priority });
+          this.sort();
+        }
+
+        dequeue() {
+          return this.values.shift();
+        }
+
+        sort() {
+          this.values.sort((a, b) => a.priority - b.priority);
+        }
+
+        isEmpty() {
+          return this.values.length === 0;
+        }
+      }
+
+      function dijkstra(graph, start, end) {
+        const distances = {};
+        const previous = {};
+        const pq = new PriorityQueue();
+
+        // Initialize distances
+        for (let node in graph) {
+          distances[node] = Infinity;
+          previous[node] = null;
+        }
+        distances[start] = 0;
+        pq.enqueue(start, 0);
+
+        while (!pq.isEmpty()) {
+          const { val: currentNode } = pq.dequeue();
+
+          if (currentNode === end) {
+            // Build path
+            const path = [];
+            let current = end;
+            while (current !== null) {
+              path.unshift(current);
+              current = previous[current];
+            }
+            return { path, distance: distances[end] };
+          }
+
+          if (graph[currentNode]) {
+            for (let neighbor in graph[currentNode]) {
+              const weight = graph[currentNode][neighbor];
+              const newDistance = distances[currentNode] + weight;
+
+              if (newDistance < distances[neighbor]) {
+                distances[neighbor] = newDistance;
+                previous[neighbor] = currentNode;
+                pq.enqueue(neighbor, newDistance);
+              }
+            }
+          }
+        }
+
+        return { path: [], distance: Infinity };
+      }
+
+      // ==================== GLOBAL VARIABLES ====================
+      const canvas = document.getElementById("mapCanvas");
+      const ctx = canvas.getContext("2d");
+
+      let graphData = null;
+      let adjacencyList = {};
+      let backgroundImage = null;
+      let currentPath = [];
+      let currentPathDistance = 0;
+
+      // Zoom and pan
+      let scale = 1;
+      let offsetX = 0;
+      let offsetY = 0;
+      let isPanning = false;
+      let hasPanned = false;
+      let startPanX = 0;
+      let startPanY = 0;
+
+      // Node colors by type
+      const nodeColors = {
+        entrance: "#FF6B6B",
+        hallway: "#4ECDC4",
+        room: "#95E1D3",
+        elevator: "#FFD93D",
+        stairs: "#FFA07A",
+        restroom: "#DDA0DD",
+        outdoor: "#90EE90",
+        building: "#FFB6C1",
+        classroom: "#87CEEB",
+      };
+
+      // ==================== AUTO-LOAD FILES ON PAGE LOAD ====================
+      window.addEventListener('load', async () => {
+        try {
+          // Use embedded graph data from graph_data.js
+          graphData = GRAPH_DATA;
+          buildAdjacencyList();
+          populateDropdowns();
+          console.log('✅ Graph data loaded');
+
+          // Load background image
+          const img = new Image();
+          img.onload = () => {
+            backgroundImage = img;
+            canvas.width = img.width;
+            canvas.height = img.height;
+            setupCanvasControls();
+            draw();
+            console.log('✅ Map image loaded');
+            checkIfReady();
+          };
+          img.onerror = () => {
+            alert('Error loading Map.jpg. Make sure the file exists in the same directory.');
+          };
+          img.src = 'Map.jpg';
+        } catch (error) {
+          console.error('Error loading files:', error);
+          alert('Error loading map. Make sure graph_data.js and Map.jpg are in the same directory.');
+        }
+      });
+
+      // ==================== OPTIONAL FILE UPLOAD HANDLERS ====================
+      document
+        .getElementById("graphFile")
+        .addEventListener("change", async (e) => {
+          const file = e.target.files[0];
+          if (file) {
+            const text = await file.text();
+            graphData = JSON.parse(text);
+            buildAdjacencyList();
+            populateDropdowns();
+            document.getElementById(
+              "graphFileName"
+            ).textContent = `✅ ${file.name}`;
+            checkIfReady();
+          }
+        });
+
+      document.getElementById("imageFile").addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            const img = new Image();
+            img.onload = () => {
+              backgroundImage = img;
+              canvas.width = img.width;
+              canvas.height = img.height;
+              document.getElementById(
+                "imageFileName"
+              ).textContent = `✅ ${file.name}`;
+              checkIfReady();
+              setupCanvasControls();
+              draw();
+            };
+            img.src = event.target.result;
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+
+      function checkIfReady() {
+        if (graphData && backgroundImage) {
+          document.getElementById("uploadSection").style.display = "none";
+          document.getElementById("routeSection").style.display = "block";
+          document.getElementById("zoomControls").style.display = "flex";
+          document.getElementById("infoMessage").style.display = "none";
+        }
+      }
+
+      // ==================== BUILD ADJACENCY LIST ====================
+      function buildAdjacencyList() {
+        adjacencyList = {};
+
+        // Initialize all nodes
+        graphData.nodes.forEach((node) => {
+          adjacencyList[node.id] = {};
+        });
+
+        // Add edges (bidirectional)
+        graphData.edges.forEach((edge) => {
+          adjacencyList[edge.source][edge.target] = edge.weight;
+          // Assuming undirected graph
+          adjacencyList[edge.target][edge.source] = edge.weight;
+        });
+      }
+
+      // ==================== POPULATE DROPDOWNS ====================
+      function populateDropdowns() {
+        const startSelect = document.getElementById("startNode");
+        const endSelect = document.getElementById("endNode");
+
+        // Sort nodes by ID
+        const sortedNodes = [...graphData.nodes].sort((a, b) =>
+          a.id.localeCompare(b.id)
+        );
+
+        sortedNodes.forEach((node) => {
+          const option1 = document.createElement("option");
+          option1.value = node.id;
+          option1.textContent = `${node.id}${
+            node.type ? " (" + node.type + ")" : ""
+          }`;
+          startSelect.appendChild(option1);
+
+          const option2 = document.createElement("option");
+          option2.value = node.id;
+          option2.textContent = `${node.id}${
+            node.type ? " (" + node.type + ")" : ""
+          }`;
+          endSelect.appendChild(option2);
+        });
+      }
+
+      // ==================== FIND PATH ====================
+      function findPath() {
+        const startNode = document.getElementById("startNode").value;
+        const endNode = document.getElementById("endNode").value;
+
+        // Validation
+        if (!startNode || !endNode) {
+          showMessage(
+            "error",
+            "Please select both start and destination points"
+          );
+          return;
+        }
+
+        if (startNode === endNode) {
+          showMessage("error", "Start and destination cannot be the same");
+          return;
+        }
+
+        // Run Dijkstra
+        const result = dijkstra(adjacencyList, startNode, endNode);
+
+        if (result.path.length === 0) {
+          showMessage("error", "No path found between these locations");
+          currentPath = [];
+          draw();
+          return;
+        }
+
+        // Success
+        currentPath = result.path;
+        currentPathDistance = result.distance;
+        showMessage(
+          "success",
+          `✅ Path found! Distance: ${result.distance.toFixed(2)} units`
+        );
+        showDirections();
+        draw();
+      }
+
+      // ==================== SHOW DIRECTIONS ====================
+      function showDirections() {
+        const directionsSection = document.getElementById("directionsSection");
+        const directionsList = document.getElementById("directionsList");
+        const totalDistanceDiv = document.getElementById("totalDistance");
+
+        directionsSection.style.display = "block";
+        totalDistanceDiv.textContent = `Total Distance: ${currentPathDistance.toFixed(
+          2
+        )} units`;
+
+        directionsList.innerHTML = "";
+
+        for (let i = 0; i < currentPath.length; i++) {
+          const nodeId = currentPath[i];
+          const node = graphData.nodes.find((n) => n.id === nodeId);
+
+          let stepText = "";
+          let distance = 0;
+
+          if (i === 0) {
+            stepText = `Start at <strong>${nodeId}</strong>`;
+          } else if (i === currentPath.length - 1) {
+            stepText = `Arrive at <strong>${nodeId}</strong>`;
+            // Get distance from previous node
+            const prevNode = currentPath[i - 1];
+            distance = adjacencyList[prevNode][nodeId];
+          } else {
+            stepText = `Continue to <strong>${nodeId}</strong>`;
+            const prevNode = currentPath[i - 1];
+            distance = adjacencyList[prevNode][nodeId];
+          }
+
+          if (node && node.type) {
+            stepText += ` <span style="color: #888;">(${node.type})</span>`;
+          }
+
+          const stepDiv = document.createElement("div");
+          stepDiv.className = "direction-step";
+          stepDiv.innerHTML = `
+                    <div class="step-number">${i + 1}</div>
+                    <div class="step-text">${stepText}</div>
+                    ${
+                      distance > 0
+                        ? `<div class="step-distance">${distance.toFixed(
+                            1
+                          )}u</div>`
+                        : ""
+                    }
+                `;
+          directionsList.appendChild(stepDiv);
+        }
+      }
+
+      // ==================== CLEAR PATH ====================
+      function clearPath() {
+        currentPath = [];
+        currentPathDistance = 0;
+        document.getElementById("directionsSection").style.display = "none";
+        document.getElementById("startNode").value = "";
+        document.getElementById("endNode").value = "";
+        hideMessage();
+        draw();
+      }
+
+      // ==================== MESSAGES ====================
+      function showMessage(type, text) {
+        hideMessage();
+        const messageDiv = document.getElementById(type + "Message");
+        messageDiv.textContent = text;
+        messageDiv.style.display = "block";
+
+        if (type === "success") {
+          setTimeout(hideMessage, 5000);
+        }
+      }
+
+      function hideMessage() {
+        document.getElementById("errorMessage").style.display = "none";
+        document.getElementById("successMessage").style.display = "none";
+      }
+
+      // ==================== DRAWING ====================
+      function draw() {
+        if (!backgroundImage) return;
+
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        ctx.setTransform(scale, 0, 0, scale, offsetX, offsetY);
+
+        // Draw background image
+        ctx.drawImage(backgroundImage, 0, 0);
+
+        // Draw all edges (light gray)
+        ctx.strokeStyle = "rgba(0, 0, 0, 0.1)";
+        ctx.lineWidth = 2 / scale;
+        graphData.edges.forEach((edge) => {
+          const sourceNode = graphData.nodes.find((n) => n.id === edge.source);
+          const targetNode = graphData.nodes.find((n) => n.id === edge.target);
+          if (sourceNode && targetNode && sourceNode.x && targetNode.x) {
+            ctx.beginPath();
+            ctx.moveTo(sourceNode.x, sourceNode.y);
+            ctx.lineTo(targetNode.x, targetNode.y);
+            ctx.stroke();
+          }
+        });
+
+        // Draw path if exists
+        if (currentPath.length > 1) {
+          ctx.strokeStyle = "#2196F3";
+          ctx.lineWidth = 6 / scale;
+          ctx.lineCap = "round";
+          ctx.lineJoin = "round";
+
+          ctx.beginPath();
+          for (let i = 0; i < currentPath.length; i++) {
+            const node = graphData.nodes.find((n) => n.id === currentPath[i]);
+            if (node && node.x) {
+              if (i === 0) {
+                ctx.moveTo(node.x, node.y);
+              } else {
+                ctx.lineTo(node.x, node.y);
+              }
+            }
+          }
+          ctx.stroke();
+        }
+
+        // Draw only start and end nodes (not intermediate waypoints)
+        graphData.nodes.forEach((node) => {
+          if (!node.x) return;
+
+          // Only draw if this node is the start or end of current path
+          const isStart = currentPath.length > 0 && node.id === currentPath[0];
+          const isEnd =
+            currentPath.length > 0 &&
+            node.id === currentPath[currentPath.length - 1];
+
+          if (isStart || isEnd) {
+            let color = isStart ? "#4CAF50" : "#f44336"; // Start - green, End - red
+            let size = 15 / scale;
+
+            ctx.fillStyle = color;
+            ctx.strokeStyle = "#000";
+            ctx.lineWidth = 3 / scale;
+
+            ctx.beginPath();
+            ctx.arc(node.x, node.y, size, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // Draw labels for start and end nodes
+            ctx.fillStyle = "#000";
+            ctx.font = `bold ${16 / scale}px Arial`;
+            ctx.textAlign = "center";
+            ctx.fillText(node.id, node.x, node.y - 20 / scale);
+          }
+        });
+      }
+
+      // ==================== ZOOM & PAN ====================
+      function setupCanvasControls() {
+        canvas.addEventListener("mousedown", (e) => {
+          isPanning = true;
+          hasPanned = false;
+          const rect = canvas.getBoundingClientRect();
+          startPanX = e.clientX - offsetX;
+          startPanY = e.clientY - offsetY;
+          canvas.style.cursor = "grabbing";
+        });
+
+        canvas.addEventListener("mousemove", (e) => {
+          if (isPanning) {
+            hasPanned = true;
+            offsetX = e.clientX - startPanX;
+            offsetY = e.clientY - startPanY;
+            draw();
+          }
+        });
+
+        canvas.addEventListener("mouseup", () => {
+          isPanning = false;
+          canvas.style.cursor = "default";
+        });
+
+        canvas.addEventListener("mouseleave", () => {
+          isPanning = false;
+          canvas.style.cursor = "default";
+        });
+
+        canvas.addEventListener("wheel", (e) => {
+          e.preventDefault();
+          const rect = canvas.getBoundingClientRect();
+          const mouseX = e.clientX - rect.left;
+          const mouseY = e.clientY - rect.top;
+
+          const worldX = (mouseX - offsetX) / scale;
+          const worldY = (mouseY - offsetY) / scale;
+
+          const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
+          scale *= zoomFactor;
+          scale = Math.max(0.1, Math.min(5, scale));
+
+          offsetX = mouseX - worldX * scale;
+          offsetY = mouseY - worldY * scale;
+
+          draw();
+        });
+      }
+
+      function zoomIn() {
+        scale *= 1.2;
+        scale = Math.min(5, scale);
+        draw();
+      }
+
+      function zoomOut() {
+        scale *= 0.8;
+        scale = Math.max(0.1, scale);
+        draw();
+      }
+
+      function zoomReset() {
+        scale = 1;
+        offsetX = 0;
+        offsetY = 0;
+        draw();
+      }
+    </script>
+  </body>
+</html>
