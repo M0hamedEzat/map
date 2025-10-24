@@ -92,79 +92,79 @@ const GRAPH_DATA = {
         },
         {
             "id": "CP40",
-            "type": "room",
+            "type": "Classroom",
             "x": 2300,
             "y": 852
         },
         {
             "id": "CP41a",
-            "type": "room",
+            "type": "Classroom",
             "x": 2003,
             "y": 886
         },
         {
             "id": "CP41b",
-            "type": "room",
+            "type": "Classroom",
             "x": 2178,
             "y": 729
         },
         {
             "id": "CP42a",
-            "type": "room",
+            "type": "Classroom",
             "x": 1873,
             "y": 764
         },
         {
             "id": "CP42b",
-            "type": "room",
+            "type": "Classroom",
             "x": 2050,
             "y": 607
         },
         {
             "id": "CP44",
-            "type": "room",
+            "type": "Classroom",
             "x": 1845,
             "y": 416
         },
         {
             "id": "CP45",
-            "type": "room",
+            "type": "Classroom",
             "x": 1745,
             "y": 332
         },
         {
             "id": "CP46",
-            "type": "room",
+            "type": "Classroom",
             "x": 1632,
             "y": 378
         },
         {
             "id": "CP47",
-            "type": "room",
+            "type": "Classroom",
             "x": 1492,
             "y": 375
         },
         {
             "id": "CP48",
-            "type": "room",
+            "type": "Classroom",
             "x": 1370,
             "y": 454
         },
         {
             "id": "CP43",
-            "type": "room",
+            "type": "Classroom",
             "x": 1255,
             "y": 974
         },
         {
             "id": "CP39",
-            "type": "room",
+            "type": "Classroom",
             "x": 1892,
             "y": 1589
         },
         {
             "id": "CP38",
-            "type": "room",
+            "type": "Classroom",
             "x": 2375,
             "y": 2050
         },
