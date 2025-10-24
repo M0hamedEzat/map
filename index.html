@@ -638,6 +638,7 @@
       let backgroundImage = null;
       let currentPath = [];
       let currentPathDistance = 0;
+      let baseToVariants = {};
 
       // Zoom and pan
       let scale = 1;
@@ -758,38 +759,57 @@
       }
 
       // ==================== POPULATE DROPDOWNS ====================
+      
       function populateDropdowns() {
+        // Build base -> variants map
+        baseToVariants = {};
+        graphData.nodes.forEach((node) => {
+          const id = node.id;
+          // treat trailing 'a' or 'b' (case-insensitive) as a door suffix
+          const lastChar = id.slice(-1);
+          let baseId = id;
+          if (/^[ab]$/i.test(lastChar) && /^[A-Za-z0-9]+[abAB]$/.test(id)) {
+            baseId = id.slice(0, -1);
+          }
+          if (!baseToVariants[baseId]) baseToVariants[baseId] = [];
+          baseToVariants[baseId].push(id);
+        });
+
         const startSelect = document.getElementById("startNode");
         const endSelect = document.getElementById("endNode");
 
-        // Sort nodes by ID
-        const sortedNodes = [...graphData.nodes].sort((a, b) =>
-          a.id.localeCompare(b.id)
+        // Reset selects
+        startSelect.innerHTML = '<option value="">-- Select Start --</option>';
+        endSelect.innerHTML = '<option value="">-- Select Destination --</option>';
+
+        // Sort base IDs
+        const sortedBases = Object.keys(baseToVariants).sort((a, b) =>
+          a.localeCompare(b)
         );
 
-        sortedNodes.forEach((node) => {
-          // Skip nodes that start with 'H'
-          if (node.id.startsWith('H')) {
-            return;
-          }
+        sortedBases.forEach((baseId) => {
+          // Skip bases that start with 'H'
+          if (baseId.startsWith("H")) return;
+
+          const variantSample = graphData.nodes.find(
+            (n) => n.id === baseToVariants[baseId][0]
+          );
+          const displayText = variantSample && variantSample.type
+            ? `${baseId} (${variantSample.type})`
+            : baseId;
 
           const option1 = document.createElement("option");
-          option1.value = node.id;
-          option1.textContent = `${node.id}${
-            node.type ? " (" + node.type + ")" : ""
-          }`;
+          option1.value = baseId;
+          option1.textContent = displayText;
           startSelect.appendChild(option1);
 
-          const option2 = document.createElement("option");
-          option2.value = node.id;
-          option2.textContent = `${node.id}${
-            node.type ? " (" + node.type + ")" : ""
-          }`;
+          const option2 = option1.cloneNode(true);
           endSelect.appendChild(option2);
         });
       }
 
       // ==================== FIND PATH ====================
+     
       function findPath() {
         const startNode = document.getElementById("startNode").value;
         const endNode = document.getElementById("endNode").value;
@@ -808,26 +828,45 @@
           return;
         }
 
-        // Run Dijkstra
-        const result = dijkstra(adjacencyList, startNode, endNode);
+        // Resolve selected base IDs to actual variant node IDs
+        const startCandidates = baseToVariants[startNode]
+          ? [...baseToVariants[startNode]]
+          : [startNode];
+        const endCandidates = baseToVariants[endNode]
+          ? [...baseToVariants[endNode]]
+          : [endNode];
 
-        if (result.path.length === 0) {
+        // Try all combinations and pick the shortest resulting path
+        let bestResult = { path: [], distance: Infinity, start: null, end: null };
+
+        for (let s of startCandidates) {
+          for (let t of endCandidates) {
+            // If the graph does not contain the candidate (defensive)
+            if (!adjacencyList[s] || !adjacencyList[t]) continue;
+            const result = dijkstra(adjacencyList, s, t);
+            if (result.path.length > 0 && result.distance < bestResult.distance) {
+              bestResult = { path: result.path, distance: result.distance, start: s, end: t };
+            }
+          }
+        }
+
+        if (bestResult.path.length === 0) {
           showMessage("error", "No path found between these locations");
           currentPath = [];
           draw();
           return;
         }
 
-        // Success
-        currentPath = result.path;
-        currentPathDistance = result.distance;
+        // Success - store chosen variant path
+        currentPath = bestResult.path;
+        currentPathDistance = bestResult.distance;
         showMessage(
           "success",
-          `✅ Path found! Distance: ${result.distance.toFixed(2)} units`
+          `✅ Path found! Distance: ${bestResult.distance.toFixed(2)} units`
         );
         showDirections();
         draw();
-      }
+}
 
       // ==================== SHOW DIRECTIONS ====================
       function showDirections() {
