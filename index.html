@@ -54,6 +54,122 @@
         max-height: 900px;
       }
 
+      /* Mobile Styles */
+      @media (max-width: 768px) {
+        body {
+          padding: 0;
+        }
+
+        .container {
+          border-radius: 0;
+        }
+
+        .header h1 {
+          font-size: 1.8em;
+        }
+
+        .header p {
+          font-size: 0.9em;
+        }
+
+        .main-content {
+          grid-template-columns: 1fr;
+          min-height: auto;
+        }
+
+        .sidebar {
+          border-right: none;
+          border-bottom: 2px solid #e0e0e0;
+          max-height: none;
+          padding: 15px;
+        }
+
+        .control-section {
+          padding: 15px;
+          margin-bottom: 15px;
+        }
+
+        .map-container {
+          min-height: 400px;
+          height: 60vh;
+        }
+
+        .zoom-controls {
+          top: 10px;
+          right: 10px;
+          gap: 8px;
+        }
+
+        .zoom-btn {
+          width: 40px;
+          height: 40px;
+          font-size: 18px;
+        }
+
+        .legend {
+          padding: 10px;
+        }
+
+        .legend h4 {
+          font-size: 12px;
+        }
+
+        .legend-item {
+          font-size: 11px;
+          gap: 8px;
+        }
+
+        .direction-step {
+          padding: 10px;
+          gap: 8px;
+        }
+
+        .step-number {
+          width: 25px;
+          height: 25px;
+          font-size: 12px;
+        }
+
+        .step-text {
+          font-size: 13px;
+        }
+      }
+
+      /* Small Mobile Styles */
+      @media (max-width: 480px) {
+        .header {
+          padding: 20px 15px;
+        }
+
+        .header h1 {
+          font-size: 1.5em;
+        }
+
+        .sidebar {
+          padding: 10px;
+        }
+
+        .control-section {
+          padding: 12px;
+        }
+
+        .btn {
+          padding: 12px;
+          font-size: 14px;
+        }
+
+        .zoom-btn {
+          width: 35px;
+          height: 35px;
+          font-size: 16px;
+        }
+
+        .map-container {
+          min-height: 300px;
+          height: 50vh;
+        }
+      }
+
       .map-container {
         position: relative;
         background: #fafafa;
@@ -871,6 +987,7 @@
 
       // ==================== ZOOM & PAN ====================
       function setupCanvasControls() {
+        // Mouse events
         canvas.addEventListener("mousedown", (e) => {
           isPanning = true;
           hasPanned = false;
@@ -916,6 +1033,81 @@
           offsetY = mouseY - worldY * scale;
 
           draw();
+        });
+
+        // Touch events for mobile
+        let lastTouchDistance = 0;
+        let lastTouchX = 0;
+        let lastTouchY = 0;
+
+        canvas.addEventListener("touchstart", (e) => {
+          e.preventDefault();
+          if (e.touches.length === 1) {
+            // Single touch - pan
+            isPanning = true;
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            startPanX = touch.clientX - offsetX;
+            startPanY = touch.clientY - offsetY;
+            lastTouchX = touch.clientX;
+            lastTouchY = touch.clientY;
+          } else if (e.touches.length === 2) {
+            // Two fingers - pinch zoom
+            isPanning = false;
+            const touch1 = e.touches[0];
+            const touch2 = e.touches[1];
+            lastTouchDistance = Math.hypot(
+              touch2.clientX - touch1.clientX,
+              touch2.clientY - touch1.clientY
+            );
+          }
+        });
+
+        canvas.addEventListener("touchmove", (e) => {
+          e.preventDefault();
+          if (e.touches.length === 1 && isPanning) {
+            // Pan
+            const touch = e.touches[0];
+            offsetX = touch.clientX - startPanX;
+            offsetY = touch.clientY - startPanY;
+            draw();
+          } else if (e.touches.length === 2) {
+            // Pinch zoom
+            const touch1 = e.touches[0];
+            const touch2 = e.touches[1];
+            const currentDistance = Math.hypot(
+              touch2.clientX - touch1.clientX,
+              touch2.clientY - touch1.clientY
+            );
+
+            if (lastTouchDistance > 0) {
+              const rect = canvas.getBoundingClientRect();
+              const centerX = (touch1.clientX + touch2.clientX) / 2 - rect.left;
+              const centerY = (touch1.clientY + touch2.clientY) / 2 - rect.top;
+
+              const worldX = (centerX - offsetX) / scale;
+              const worldY = (centerY - offsetY) / scale;
+
+              const zoomFactor = currentDistance / lastTouchDistance;
+              scale *= zoomFactor;
+              scale = Math.max(0.1, Math.min(5, scale));
+
+              offsetX = centerX - worldX * scale;
+              offsetY = centerY - worldY * scale;
+
+              draw();
+            }
+
+            lastTouchDistance = currentDistance;
+          }
+        });
+
+        canvas.addEventListener("touchend", (e) => {
+          e.preventDefault();
+          isPanning = false;
+          if (e.touches.length < 2) {
+            lastTouchDistance = 0;
+          }
         });
       }
 
