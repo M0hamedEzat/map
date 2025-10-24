@@ -768,6 +768,11 @@
         );
 
         sortedNodes.forEach((node) => {
+          // Skip nodes that start with 'H'
+          if (node.id.startsWith('H')) {
+            return;
+          }
+
           const option1 = document.createElement("option");
           option1.value = node.id;
           option1.textContent = `${node.id}${
