@@ -170,6 +170,142 @@
         }
       }
 
+      .btn-compass {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+      }
+
+      .btn-compass:disabled {
+        background: linear-gradient(135deg, #a8b3f0 0%, #b89ac9 100%);
+      }
+      /* Compass Styles - Google Maps Style */
+      .compass-container {
+        position: absolute;
+        bottom: 20px;
+        right: 20px;
+        z-index: 100;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .compass {
+        width: 50px;
+        height: 50px;
+        position: relative;
+        background: white;
+        border-radius: 50%;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: transform 0.2s;
+      }
+
+      .compass:hover {
+        transform: scale(1.05);
+      }
+
+      .compass-inner {
+        width: 100%;
+        height: 100%;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .compass-pointer {
+        position: absolute;
+        width: 0;
+        height: 0;
+        border-left: 8px solid transparent;
+        border-right: 8px solid transparent;
+        border-bottom: 24px solid #4285f4;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -70%);
+        transform-origin: 50% 70%;
+        transition: transform 0.3s ease-out;
+        filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.3));
+      }
+
+      .compass-pointer::after {
+        content: '';
+        position: absolute;
+        width: 0;
+        height: 0;
+        border-left: 6px solid transparent;
+        border-right: 6px solid transparent;
+        border-top: 18px solid #ea4335;
+        top: 0;
+        left: 50%;
+        transform: translateX(-50%);
+      }
+
+      .compass-center-dot {
+        position: absolute;
+        width: 8px;
+        height: 8px;
+        background: white;
+        border: 2px solid #5f6368;
+        border-radius: 50%;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 10;
+      }
+
+      .compass-label {
+        font-size: 11px;
+        font-weight: 500;
+        color: #5f6368;
+        background: white;
+        padding: 4px 8px;
+        border-radius: 12px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        white-space: nowrap;
+      }
+
+      .compass-error {
+        color: #ea4335;
+        font-size: 10px;
+      }
+
+      @media (max-width: 768px) {
+        .compass-container {
+          bottom: 80px;
+          right: 10px;
+        }
+
+        .compass {
+          width: 45px;
+          height: 45px;
+        }
+
+        .compass-pointer {
+          border-left: 7px solid transparent;
+          border-right: 7px solid transparent;
+          border-bottom: 20px solid #4285f4;
+        }
+
+        .compass-pointer::after {
+          border-left: 5px solid transparent;
+          border-right: 5px solid transparent;
+          border-top: 15px solid #ea4335;
+        }
+
+        .compass-label {
+          font-size: 10px;
+          padding: 3px 6px;
+        }
+      }
+
       .map-container {
         position: relative;
         background: #fafafa;
@@ -492,6 +628,10 @@
               🔄 Clear Path
             </button>
 
+            <button class="btn btn-compass" id="compassBtn" onclick="enableCompass()" style="display: none;">
+              🧭 Enable Compass
+            </button>
+
             <div class="message error-message" id="errorMessage"></div>
             <div class="message success-message" id="successMessage"></div>
           </div>
@@ -537,6 +677,23 @@
             <button class="zoom-btn" onclick="zoomReset()">⊙</button>
             <button class="zoom-btn" onclick="zoomOut()">−</button>
           </div>
+
+                    
+          <!-- Compass -->
+          <div class="compass-container" id="compassContainer">
+            <div class="compass" id="compass" title="Compass">
+              <div class="compass-inner">
+                <!-- Blue pointer arrow pointing North -->
+                <div class="compass-pointer" id="compassPointer"></div>
+                
+                <!-- Center dot -->
+                <div class="compass-center-dot"></div>
+              </div>
+            </div>
+            <div class="compass-label" id="compassLabel">---</div>
+          </div>
+
+
           <canvas id="mapCanvas"></canvas>
           <div
             class="message info-message"
@@ -1172,6 +1329,183 @@
         offsetX = 0;
         offsetY = 0;
         draw();
+      }
+      
+      // ==================== COMPASS FUNCTIONALITY ====================
+      let compassSupported = false;
+      let currentHeading = 0;
+      let compassCalibrated = false;
+      let lastHeading = 0;
+      let rotationOffset = 0;
+
+      // Initialize compass on page load
+      window.addEventListener("load", initCompass);
+
+      function initCompass() {
+        const compassPointer = document.getElementById("compassPointer");
+        const compassLabel = document.getElementById("compassLabel");
+        const compassBtn = document.getElementById("compassBtn");
+
+        // Check if Device Orientation API is supported
+        if (window.DeviceOrientationEvent) {
+          // For iOS 13+ we need to request permission
+          if (
+            typeof DeviceOrientationEvent.requestPermission === "function"
+          ) {
+            compassLabel.textContent = "Tap to enable";
+            compassLabel.style.color = "#888";
+            compassBtn.style.display = "block"; // Show the button
+          } else {
+            // Android or older iOS - start automatically
+            startCompass();
+          }
+        } else {
+          compassLabel.textContent = "Not supported";
+          compassLabel.classList.add("compass-error");
+          console.warn("Device Orientation API not supported");
+        }
+      }
+
+      function enableCompass() {
+        const compassBtn = document.getElementById("compassBtn");
+        const compassLabel = document.getElementById("compassLabel");
+
+        // Check if permission is needed (iOS 13+)
+        if (typeof DeviceOrientationEvent.requestPermission === "function") {
+          compassBtn.disabled = true;
+          compassBtn.textContent = "🧭 Requesting...";
+
+          DeviceOrientationEvent.requestPermission()
+            .then((response) => {
+              if (response === "granted") {
+                compassBtn.textContent = "✅ Compass Enabled";
+                setTimeout(() => {
+                  compassBtn.style.display = "none";
+                }, 2000);
+                startCompass();
+              } else {
+                compassLabel.textContent = "Permission denied";
+                compassLabel.classList.add("compass-error");
+                compassBtn.textContent = "❌ Permission Denied";
+                compassBtn.disabled = false;
+              }
+            })
+            .catch((error) => {
+              console.error("Error requesting compass permission:", error);
+              compassLabel.textContent = "Permission error";
+              compassLabel.classList.add("compass-error");
+              compassBtn.textContent = "❌ Error";
+              compassBtn.disabled = false;
+            });
+        } else {
+          // No permission needed, just start
+          startCompass();
+          compassBtn.style.display = "none";
+        }
+      }
+
+      function requestCompassPermission() {
+        // This function is kept for backward compatibility with the small button in compass
+        enableCompass();
+      }
+
+      function startCompass() {
+        const compassPointer = document.getElementById("compassPointer");
+        const compassLabel = document.getElementById("compassLabel");
+
+        compassSupported = true;
+        compassLabel.textContent = "N";
+        compassLabel.style.color = "#5f6368";
+
+        // Listen for device orientation changes
+        window.addEventListener("deviceorientationabsolute", handleOrientation, true);
+        window.addEventListener("deviceorientation", handleOrientation, true);
+
+        // Fallback: if no data received after 3 seconds
+        setTimeout(() => {
+          if (!compassCalibrated) {
+            compassLabel.textContent = "No signal";
+            compassLabel.classList.add("compass-error");
+          }
+        }, 3000);
+      }
+
+      function handleOrientation(event) {
+        const compassPointer = document.getElementById("compassPointer");
+        const compassLabel = document.getElementById("compassLabel");
+
+        let heading = null;
+
+        // Get compass heading
+        if (event.webkitCompassHeading !== undefined) {
+          // iOS
+          heading = event.webkitCompassHeading;
+        } else if (event.alpha !== null) {
+          // Android and other devices
+          heading = 360 - event.alpha;
+        }
+
+        if (heading !== null) {
+          compassCalibrated = true;
+          currentHeading = heading;
+
+          // Fix rotation wrapping issue (350° -> 0° jump)
+          let delta = heading - lastHeading;
+          
+          // Detect wrap around
+          if (delta > 180) {
+            // Wrapped from 359 to 0 (going counter-clockwise)
+            rotationOffset -= 360;
+          } else if (delta < -180) {
+            // Wrapped from 0 to 359 (going clockwise)
+            rotationOffset += 360;
+          }
+          
+          lastHeading = heading;
+          
+          // Apply the actual rotation with offset to prevent jumping
+          const actualRotation = heading + rotationOffset;
+          compassPointer.style.transform = `translate(-50%, -70%) rotate(${actualRotation}deg)`;
+
+          // Update label with cardinal direction
+          const direction = getCardinalDirection(heading);
+          compassLabel.textContent = direction;
+          compassLabel.classList.remove("compass-error");
+          compassLabel.style.color = "#5f6368";
+        }
+      }
+
+      function getCardinalDirection(degrees) {
+        const directions = [
+          "N",
+          "NNE",
+          "NE",
+          "ENE",
+          "E",
+          "ESE",
+          "SE",
+          "SSE",
+          "S",
+          "SSW",
+          "SW",
+          "WSW",
+          "W",
+          "WNW",
+          "NW",
+          "NNW",
+        ];
+        const index = Math.round(degrees / 22.5) % 16;
+        return directions[index];
+      }
+
+      // Optional: Add compass visibility toggle
+      function toggleCompass() {
+        const compassContainer = document.getElementById("compassContainer");
+        if (compassContainer.style.display === "none") {
+          compassContainer.style.display = "flex";
+        } else {
+          compassContainer.style.display = "none";
+        }
       }
     </script>
   </body>
