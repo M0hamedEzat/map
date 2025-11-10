@@ -4,7 +4,7 @@ const GRAPH_DATA =
         "imageWidth": 5769,
         "imageHeight": 4967,
         "floor": 0,
-        "created": "2025-11-10T21:21:07.010Z",
+        "created": "2025-11-10T22:46:40.116Z",
         "description": "Graph with absolute X,Y,Z coordinates"
     },
     "nodes": [
@@ -895,76 +895,6 @@ const GRAPH_DATA =
             "type": "room",
             "x": 3433,
             "y": 1519,
-            "z": 0
-        },
-        {
-            "id": "CP40",
-            "type": "room",
-            "x": 3360,
-            "y": 1131,
-            "z": 0
-        },
-        {
-            "id": "CP41a",
-            "type": "room",
-            "x": 3198,
-            "y": 968,
-            "z": 0
-        },
-        {
-            "id": "CP41b",
-            "type": "room",
-            "x": 2988,
-            "y": 1165,
-            "z": 0
-        },
-        {
-            "id": "CP42b",
-            "type": "room",
-            "x": 2830,
-            "y": 1003,
-            "z": 0
-        },
-        {
-            "id": "CP42a",
-            "type": "room",
-            "x": 3033,
-            "y": 801,
-            "z": 0
-        },
-        {
-            "id": "CP44",
-            "type": "room",
-            "x": 2778,
-            "y": 581,
-            "z": 0
-        },
-        {
-            "id": "CP45",
-            "type": "room",
-            "x": 2658,
-            "y": 459,
-            "z": 0
-        },
-        {
-            "id": "CP46",
-            "type": "room",
-            "x": 2511,
-            "y": 499,
-            "z": 0
-        },
-        {
-            "id": "CP47",
-            "type": "room",
-            "x": 2330,
-            "y": 498,
-            "z": 0
-        },
-        {
-            "id": "CP48",
-            "type": "room",
-            "x": 2180,
-            "y": 596,
             "z": 0
         },
         {
@@ -2624,6 +2554,76 @@ const GRAPH_DATA =
             "type": "hallway",
             "x": 3070,
             "y": 756,
+            "z": 0
+        },
+        {
+            "id": "CP40",
+            "type": "classroom",
+            "x": 3360,
+            "y": 1128,
+            "z": 0
+        },
+        {
+            "id": "CP41a",
+            "type": "classroom",
+            "x": 3198,
+            "y": 959,
+            "z": 0
+        },
+        {
+            "id": "CP41b",
+            "type": "classroom",
+            "x": 2992,
+            "y": 1163,
+            "z": 0
+        },
+        {
+            "id": "CP42a",
+            "type": "classroom",
+            "x": 3041,
+            "y": 806,
+            "z": 0
+        },
+        {
+            "id": "CP42b",
+            "type": "classroom",
+            "x": 2830,
+            "y": 1007,
+            "z": 0
+        },
+        {
+            "id": "CP45",
+            "type": "classroom",
+            "x": 2659,
+            "y": 460,
+            "z": 0
+        },
+        {
+            "id": "CP46",
+            "type": "classroom",
+            "x": 2512,
+            "y": 498,
+            "z": 0
+        },
+        {
+            "id": "CP47",
+            "type": "classroom",
+            "x": 2332,
+            "y": 493,
+            "z": 0
+        },
+        {
+            "id": "CP48",
+            "type": "classroom",
+            "x": 2180,
+            "y": 602,
+            "z": 0
+        },
+        {
+            "id": "CP44",
+            "type": "classroom",
+            "x": 2779,
+            "y": 574,
             "z": 0
         }
     ],
@@ -5099,26 +5099,6 @@ const GRAPH_DATA =
             "weight": 171
         },
         {
-            "source": "H43b",
-            "target": "CP41b",
-            "weight": 64
-        },
-        {
-            "source": "CP41b",
-            "target": "H43b",
-            "weight": 64
-        },
-        {
-            "source": "CP42b",
-            "target": "H43a",
-            "weight": 60
-        },
-        {
-            "source": "H43a",
-            "target": "CP42b",
-            "weight": 60
-        },
-        {
             "source": "H43a",
             "target": "H43b",
             "weight": 218
@@ -5790,16 +5770,6 @@ const GRAPH_DATA =
         },
         {
             "source": "H43t44a",
-            "target": "CP44",
-            "weight": 44
-        },
-        {
-            "source": "CP44",
-            "target": "H43t44a",
-            "weight": 44
-        },
-        {
-            "source": "H43t44a",
             "target": "H43",
             "weight": 90
         },
@@ -5820,16 +5790,6 @@ const GRAPH_DATA =
         },
         {
             "source": "H44",
-            "target": "CP45",
-            "weight": 79
-        },
-        {
-            "source": "CP45",
-            "target": "H44",
-            "weight": 79
-        },
-        {
-            "source": "H44",
             "target": "H42t44a",
             "weight": 83
         },
@@ -5847,16 +5807,6 @@ const GRAPH_DATA =
             "source": "H42t44a",
             "target": "P088",
             "weight": 45
-        },
-        {
-            "source": "H42t44a",
-            "target": "CP46",
-            "weight": 63
-        },
-        {
-            "source": "CP46",
-            "target": "H42t44a",
-            "weight": 63
         },
         {
             "source": "H42t44a",
@@ -5920,16 +5870,6 @@ const GRAPH_DATA =
         },
         {
             "source": "H42t44b",
-            "target": "CP47",
-            "weight": 53
-        },
-        {
-            "source": "CP47",
-            "target": "H42t44b",
-            "weight": 53
-        },
-        {
-            "source": "H42t44b",
             "target": "H42t44f",
             "weight": 140
         },
@@ -5937,16 +5877,6 @@ const GRAPH_DATA =
             "source": "H42t44f",
             "target": "H42t44b",
             "weight": 140
-        },
-        {
-            "source": "H42t44f",
-            "target": "CP48",
-            "weight": 48
-        },
-        {
-            "source": "CP48",
-            "target": "H42t44f",
-            "weight": 48
         },
         {
             "source": "H42t44f",
@@ -6439,46 +6369,6 @@ const GRAPH_DATA =
             "weight": 177
         },
         {
-            "source": "H20",
-            "target": "H19t20c",
-            "weight": 131
-        },
-        {
-            "source": "H19t20c",
-            "target": "H20",
-            "weight": 131
-        },
-        {
-            "source": "H19t20c",
-            "target": "CP42a",
-            "weight": 58
-        },
-        {
-            "source": "CP42a",
-            "target": "H19t20c",
-            "weight": 58
-        },
-        {
-            "source": "H19t20c",
-            "target": "H19t20b",
-            "weight": 235
-        },
-        {
-            "source": "H19t20b",
-            "target": "H19t20c",
-            "weight": 235
-        },
-        {
-            "source": "H19t20b",
-            "target": "CP41a",
-            "weight": 56
-        },
-        {
-            "source": "CP41a",
-            "target": "H19t20b",
-            "weight": 56
-        },
-        {
             "source": "H19t20b",
             "target": "H19t20a",
             "weight": 224
@@ -6497,6 +6387,126 @@ const GRAPH_DATA =
             "source": "H19t20a",
             "target": "H19",
             "weight": 145
+        },
+        {
+            "source": "CP40",
+            "target": "H19t20a",
+            "weight": 56
+        },
+        {
+            "source": "H19t20a",
+            "target": "CP40",
+            "weight": 56
+        },
+        {
+            "source": "CP41a",
+            "target": "H19t20b",
+            "weight": 50
+        },
+        {
+            "source": "H19t20b",
+            "target": "CP41a",
+            "weight": 50
+        },
+        {
+            "source": "H19t20b",
+            "target": "H19t20c",
+            "weight": 235
+        },
+        {
+            "source": "H19t20c",
+            "target": "H19t20b",
+            "weight": 235
+        },
+        {
+            "source": "H19t20c",
+            "target": "CP42a",
+            "weight": 58
+        },
+        {
+            "source": "CP42a",
+            "target": "H19t20c",
+            "weight": 58
+        },
+        {
+            "source": "H19t20c",
+            "target": "H20",
+            "weight": 131
+        },
+        {
+            "source": "H20",
+            "target": "H19t20c",
+            "weight": 131
+        },
+        {
+            "source": "H43a",
+            "target": "CP42b",
+            "weight": 57
+        },
+        {
+            "source": "CP42b",
+            "target": "H43a",
+            "weight": 57
+        },
+        {
+            "source": "H43b",
+            "target": "CP41b",
+            "weight": 67
+        },
+        {
+            "source": "CP41b",
+            "target": "H43b",
+            "weight": 67
+        },
+        {
+            "source": "H42t44a",
+            "target": "CP46",
+            "weight": 63
+        },
+        {
+            "source": "CP46",
+            "target": "H42t44a",
+            "weight": 63
+        },
+        {
+            "source": "H42t44b",
+            "target": "CP47",
+            "weight": 58
+        },
+        {
+            "source": "CP47",
+            "target": "H42t44b",
+            "weight": 58
+        },
+        {
+            "source": "H42t44f",
+            "target": "CP48",
+            "weight": 54
+        },
+        {
+            "source": "CP48",
+            "target": "H42t44f",
+            "weight": 54
+        },
+        {
+            "source": "H44",
+            "target": "CP45",
+            "weight": 78
+        },
+        {
+            "source": "CP45",
+            "target": "H44",
+            "weight": 78
+        },
+        {
+            "source": "H43t44a",
+            "target": "CP44",
+            "weight": 50
+        },
+        {
+            "source": "CP44",
+            "target": "H43t44a",
+            "weight": 50
         }
     ]
 };
