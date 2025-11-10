@@ -799,6 +799,7 @@
 
       // Zoom and pan
       let scale = 1;
+      let minScale = 1; // Minimum scale to fit image in canvas
       let offsetX = 0;
       let offsetY = 0;
       let isPanning = false;
@@ -832,8 +833,22 @@
           const img = new Image();
           img.onload = () => {
             backgroundImage = img;
-            canvas.width = img.width;
-            canvas.height = img.height;
+            
+            // Set canvas to fill the container
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            
+            // Calculate initial scale to fit image in canvas
+            const scaleX = canvas.width / img.width;
+            const scaleY = canvas.height / img.height;
+            minScale = Math.min(scaleX, scaleY);
+            scale = minScale;
+            
+            // Center the image
+            offsetX = (canvas.width - img.width * scale) / 2;
+            offsetY = (canvas.height - img.height * scale) / 2;
+            
             setupCanvasControls();
             draw();
             console.log('✅ Map image loaded');
@@ -874,8 +889,22 @@
             const img = new Image();
             img.onload = () => {
               backgroundImage = img;
-              canvas.width = img.width;
-              canvas.height = img.height;
+              
+              // Set canvas to fill the container
+              const container = canvas.parentElement;
+              canvas.width = container.clientWidth;
+              canvas.height = container.clientHeight;
+              
+              // Calculate initial scale to fit image in canvas
+              const scaleX = canvas.width / img.width;
+              const scaleY = canvas.height / img.height;
+              minScale = Math.min(scaleX, scaleY);
+              scale = minScale;
+              
+              // Center the image
+              offsetX = (canvas.width - img.width * scale) / 2;
+              offsetY = (canvas.height - img.height * scale) / 2;
+              
               document.getElementById(
                 "imageFileName"
               ).textContent = `✅ ${file.name}`;
@@ -922,10 +951,10 @@
         baseToVariants = {};
         graphData.nodes.forEach((node) => {
           const id = node.id;
-          // treat trailing 'a' or 'b' (case-insensitive) as a door suffix
+          // treat trailing 'a', 'b', or 'c' (case-insensitive) as a door suffix
           const lastChar = id.slice(-1);
           let baseId = id;
-          if (/^[ab]$/i.test(lastChar) && /^[A-Za-z0-9]+[abAB]$/.test(id)) {
+          if (/^[abc]$/i.test(lastChar) && /^[A-Za-z0-9]+[abcABC]$/.test(id)) {
             baseId = id.slice(0, -1);
           }
           if (!baseToVariants[baseId]) baseToVariants[baseId] = [];
@@ -1027,56 +1056,10 @@
 
       // ==================== SHOW DIRECTIONS ====================
       function showDirections() {
+        // User doesn't want to see directions list - keeping function minimal
+        // Just hide the directions section
         const directionsSection = document.getElementById("directionsSection");
-        const directionsList = document.getElementById("directionsList");
-        const totalDistanceDiv = document.getElementById("totalDistance");
-
-        directionsSection.style.display = "block";
-        totalDistanceDiv.textContent = `Total Distance: ${currentPathDistance.toFixed(
-          2
-        )} units`;
-
-        directionsList.innerHTML = "";
-
-        for (let i = 0; i < currentPath.length; i++) {
-          const nodeId = currentPath[i];
-          const node = graphData.nodes.find((n) => n.id === nodeId);
-
-          let stepText = "";
-          let distance = 0;
-
-          if (i === 0) {
-            stepText = `Start at <strong>${nodeId}</strong>`;
-          } else if (i === currentPath.length - 1) {
-            stepText = `Arrive at <strong>${nodeId}</strong>`;
-            // Get distance from previous node
-            const prevNode = currentPath[i - 1];
-            distance = adjacencyList[prevNode][nodeId];
-          } else {
-            stepText = `Continue to <strong>${nodeId}</strong>`;
-            const prevNode = currentPath[i - 1];
-            distance = adjacencyList[prevNode][nodeId];
-          }
-
-          if (node && node.type) {
-            stepText += ` <span style="color: #888;">(${node.type})</span>`;
-          }
-
-          const stepDiv = document.createElement("div");
-          stepDiv.className = "direction-step";
-          stepDiv.innerHTML = `
-                    <div class="step-number">${i + 1}</div>
-                    <div class="step-text">${stepText}</div>
-                    ${
-                      distance > 0
-                        ? `<div class="step-distance">${distance.toFixed(
-                            1
-                          )}u</div>`
-                        : ""
-                    }
-                `;
-          directionsList.appendChild(stepDiv);
-        }
+        directionsSection.style.display = "none";
       }
 
       // ==================== CLEAR PATH ====================
@@ -1119,20 +1102,9 @@
         // Draw background image
         ctx.drawImage(backgroundImage, 0, 0);
 
-        // Draw all edges (light gray)
-        ctx.strokeStyle = "rgba(0, 0, 0, 0.1)";
-        ctx.lineWidth = 2 / scale;
-        graphData.edges.forEach((edge) => {
-          const sourceNode = graphData.nodes.find((n) => n.id === edge.source);
-          const targetNode = graphData.nodes.find((n) => n.id === edge.target);
-          if (sourceNode && targetNode && sourceNode.x && targetNode.x) {
-            ctx.beginPath();
-            ctx.moveTo(sourceNode.x, sourceNode.y);
-            ctx.lineTo(targetNode.x, targetNode.y);
-            ctx.stroke();
-          }
-        });
-
+        // Draw all edges - INVISIBLE (edges hidden per user request)
+        // Edges are not drawn so only the blue path appears
+        
         // Draw path if exists
         if (currentPath.length > 1) {
           ctx.strokeStyle = "#2196F3";
@@ -1152,6 +1124,42 @@
             }
           }
           ctx.stroke();
+
+          // Draw directional arrows along the path
+          ctx.fillStyle = "#2196F3";
+          const arrowSize = 12 / scale;
+          
+          for (let i = 0; i < currentPath.length - 1; i++) {
+            // Only draw arrow on every other segment to reduce quantity
+            if (i % 2 !== 0) continue;
+            
+            const currentNode = graphData.nodes.find((n) => n.id === currentPath[i]);
+            const nextNode = graphData.nodes.find((n) => n.id === currentPath[i + 1]);
+            
+            if (currentNode && nextNode && currentNode.x && nextNode.x) {
+              // Calculate midpoint between current and next node
+              const midX = (currentNode.x + nextNode.x) / 2;
+              const midY = (currentNode.y + nextNode.y) / 2;
+              
+              // Calculate angle from current to next node
+              const angle = Math.atan2(nextNode.y - currentNode.y, nextNode.x - currentNode.x);
+              
+              // Draw arrow at midpoint
+              ctx.save();
+              ctx.translate(midX, midY);
+              ctx.rotate(angle);
+              
+              // Draw arrowhead pointing right (will be rotated to correct direction)
+              ctx.beginPath();
+              ctx.moveTo(arrowSize, 0);
+              ctx.lineTo(-arrowSize / 2, -arrowSize);
+              ctx.lineTo(-arrowSize / 2, arrowSize);
+              ctx.closePath();
+              ctx.fill();
+              
+              ctx.restore();
+            }
+          }
         }
 
         // Draw only start and end nodes (not intermediate waypoints)
@@ -1187,6 +1195,30 @@
       }
 
       // ==================== ZOOM & PAN ====================
+      // Helper function to constrain panning within image boundaries
+      function constrainPan() {
+        const scaledWidth = backgroundImage.width * scale;
+        const scaledHeight = backgroundImage.height * scale;
+
+        // Don't allow panning beyond image boundaries
+        // Left boundary
+        if (offsetX > 0) offsetX = 0;
+        // Right boundary
+        if (offsetX < canvas.width - scaledWidth) offsetX = canvas.width - scaledWidth;
+        // Top boundary
+        if (offsetY > 0) offsetY = 0;
+        // Bottom boundary
+        if (offsetY < canvas.height - scaledHeight) offsetY = canvas.height - scaledHeight;
+
+        // If image is smaller than canvas, center it
+        if (scaledWidth < canvas.width) {
+          offsetX = (canvas.width - scaledWidth) / 2;
+        }
+        if (scaledHeight < canvas.height) {
+          offsetY = (canvas.height - scaledHeight) / 2;
+        }
+      }
+
       function setupCanvasControls() {
         // Mouse events
         canvas.addEventListener("mousedown", (e) => {
@@ -1203,6 +1235,7 @@
             hasPanned = true;
             offsetX = e.clientX - startPanX;
             offsetY = e.clientY - startPanY;
+            constrainPan();
             draw();
           }
         });
@@ -1228,11 +1261,12 @@
 
           const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
           scale *= zoomFactor;
-          scale = Math.max(0.1, Math.min(5, scale));
+          scale = Math.max(minScale, Math.min(5, scale));
 
           offsetX = mouseX - worldX * scale;
           offsetY = mouseY - worldY * scale;
 
+          constrainPan();
           draw();
         });
 
@@ -1271,6 +1305,7 @@
             const touch = e.touches[0];
             offsetX = touch.clientX - startPanX;
             offsetY = touch.clientY - startPanY;
+            constrainPan();
             draw();
           } else if (e.touches.length === 2) {
             // Pinch zoom
@@ -1291,11 +1326,12 @@
 
               const zoomFactor = currentDistance / lastTouchDistance;
               scale *= zoomFactor;
-              scale = Math.max(0.1, Math.min(5, scale));
+              scale = Math.max(minScale, Math.min(5, scale));
 
               offsetX = centerX - worldX * scale;
               offsetY = centerY - worldY * scale;
 
+              constrainPan();
               draw();
             }
 
@@ -1315,19 +1351,22 @@
       function zoomIn() {
         scale *= 1.2;
         scale = Math.min(5, scale);
+        constrainPan();
         draw();
       }
 
       function zoomOut() {
         scale *= 0.8;
-        scale = Math.max(0.1, scale);
+        scale = Math.max(minScale, scale);
+        constrainPan();
         draw();
       }
 
       function zoomReset() {
-        scale = 1;
-        offsetX = 0;
-        offsetY = 0;
+        scale = minScale;
+        offsetX = (canvas.width - backgroundImage.width * scale) / 2;
+        offsetY = (canvas.height - backgroundImage.height * scale) / 2;
+        constrainPan();
         draw();
       }
       
