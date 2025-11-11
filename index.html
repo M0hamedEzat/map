@@ -607,16 +607,34 @@
             <h3>📍 Select Your Route</h3>
 
             <div class="input-group">
+              <label for="startFloor">Starting Floor:</label>
+              <select id="startFloor" onchange="updateStartNodes()">
+                <option value="">-- Select Floor --</option>
+                <option value="0">Plaza Floor (Ground)</option>
+                <option value="1">First Floor</option>
+              </select>
+            </div>
+
+            <div class="input-group">
               <label for="startNode">Starting Point:</label>
-              <select id="startNode">
-                <option value="">-- Select Start --</option>
+              <select id="startNode" disabled>
+                <option value="">-- Select Floor First --</option>
+              </select>
+            </div>
+
+            <div class="input-group">
+              <label for="endFloor">Destination Floor:</label>
+              <select id="endFloor" onchange="updateEndNodes()">
+                <option value="">-- Select Floor --</option>
+                <option value="0">Plaza Floor (Ground)</option>
+                <option value="1">First Floor</option>
               </select>
             </div>
 
             <div class="input-group">
               <label for="endNode">Destination:</label>
-              <select id="endNode">
-                <option value="">-- Select Destination --</option>
+              <select id="endNode" disabled>
+                <option value="">-- Select Floor First --</option>
               </select>
             </div>
 
@@ -721,7 +739,8 @@
     </div>
 
     <!-- Load graph data as JavaScript -->
-    <script src="graph_data.js"></script>
+    <script src="graph_data_floor0.js"></script>
+    <script src="graph_data_floor1.js"></script>
 
     <script>
       // ==================== DIJKSTRA'S ALGORITHM ====================
@@ -803,6 +822,14 @@
       let currentPathDistance = 0;
       let baseToVariants = {};
 
+      // Multi-floor support
+      let currentFloor = 0; // Currently displayed floor (0 or 1)
+      let floorGraphs = {}; // {0: FLOOR_0_DATA, 1: FLOOR_1_DATA}
+      let floorImages = {}; // {0: Image, 1: Image}
+      let separateAdjacencyLists = {}; // {0: adjacencyList0, 1: adjacencyList1} - SEPARATE for each floor
+      let fullPath = []; // Complete path including floor transitions
+      let floorTransitions = []; // Array of {nodeId, fromFloor, toFloor}
+
       // Zoom and pan
       let scale = 1;
       let minScale = 1; // Minimum scale to fit image in canvas
@@ -830,46 +857,73 @@
       // ==================== AUTO-LOAD FILES ON PAGE LOAD ====================
       window.addEventListener('load', async () => {
         try {
-          // Use embedded graph data from graph_data.js
-          graphData = GRAPH_DATA;
-          buildAdjacencyList();
-          populateDropdowns();
-          console.log('✅ Graph data loaded');
+          // Load both floor graph data
+          floorGraphs[0] = FLOOR_0_DATA;
+          floorGraphs[1] = FLOOR_1_DATA;
+          
+          console.log('✅ Floor graph data loaded');
 
-          // Load background image
-          const img = new Image();
-          img.onload = () => {
-            backgroundImage = img;
-            
-            // Set canvas to fill the container
-            const container = canvas.parentElement;
-            canvas.width = container.clientWidth;
-            canvas.height = container.clientHeight;
-            
-            // Calculate initial scale to fit image in canvas
-            const scaleX = canvas.width / img.width;
-            const scaleY = canvas.height / img.height;
-            minScale = Math.min(scaleX, scaleY);
-            scale = minScale;
-            
-            // Center the image
-            offsetX = (canvas.width - img.width * scale) / 2;
-            offsetY = (canvas.height - img.height * scale) / 2;
-            
-            setupCanvasControls();
-            draw();
-            console.log('✅ Map image loaded');
-            checkIfReady();
+          // Load Floor 0 image (Plaza Floor)
+          const img0 = new Image();
+          img0.onload = () => {
+            floorImages[0] = img0;
+            console.log('✅ Plaza floor image loaded');
+            checkBothFloorsLoaded();
           };
-          img.onerror = () => {
-            alert('Error loading Map.jpg. Make sure the file exists in the same directory.');
+          img0.onerror = () => {
+            alert('Error loading plaza floor.jpg. Make sure the file exists in the same directory.');
           };
-          img.src = 'Map.jpg';
+          img0.src = 'plaza floor.jpg';
+
+          // Load Floor 1 image (First Floor)
+          const img1 = new Image();
+          img1.onload = () => {
+            floorImages[1] = img1;
+            console.log('✅ First floor image loaded');
+            checkBothFloorsLoaded();
+          };
+          img1.onerror = () => {
+            alert('Error loading first floor.jpg. Make sure the file exists in the same directory.');
+          };
+          img1.src = 'first floor.jpg';
+
         } catch (error) {
           console.error('Error loading files:', error);
-          alert('Error loading map. Make sure graph_data.js and Map.jpg are in the same directory.');
+          alert('Error loading map. Make sure graph_data_floor0.js and graph_data_floor1.js are in the same directory.');
         }
       });
+
+      function checkBothFloorsLoaded() {
+        if (floorImages[0] && floorImages[1]) {
+          // Set initial floor to 0
+          currentFloor = 0;
+          backgroundImage = floorImages[0];
+          graphData = floorGraphs[0];
+
+          // Set canvas to fill the container
+          const container = canvas.parentElement;
+          canvas.width = container.clientWidth;
+          canvas.height = container.clientHeight;
+          
+          // Calculate initial scale to fit image in canvas
+          const scaleX = canvas.width / backgroundImage.width;
+          const scaleY = canvas.height / backgroundImage.height;
+          minScale = Math.min(scaleX, scaleY);
+          scale = minScale;
+          
+          // Center the image
+          offsetX = (canvas.width - backgroundImage.width * scale) / 2;
+          offsetY = (canvas.height - backgroundImage.height * scale) / 2;
+
+          // Build separate graphs and populate dropdowns
+          buildSeparateGraphs();
+          setupCanvasControls();
+          addFloorSwitcher();
+          draw();
+          console.log('✅ Multi-floor map ready');
+          checkIfReady();
+        }
+      }
 
       // ==================== OPTIONAL FILE UPLOAD HANDLERS ====================
       document
@@ -935,110 +989,209 @@
       }
 
       // ==================== BUILD ADJACENCY LIST ====================
+      function buildSeparateGraphs() {
+        separateAdjacencyLists = {};
+
+        // Build SEPARATE adjacency list for each floor (NO inter-floor connections)
+        Object.keys(floorGraphs).forEach(floor => {
+          const graph = floorGraphs[floor];
+          const adjList = {};
+          
+          // Initialize all nodes
+          graph.nodes.forEach((node) => {
+            adjList[node.id] = {};
+          });
+
+          // Add edges - ONLY if both nodes are on SAME floor
+          graph.edges.forEach((edge) => {
+            // Skip inter-floor edges (they have type: "inter-floor")
+            if (edge.type === "inter-floor") return;
+            
+            if (!adjList[edge.source]) adjList[edge.source] = {};
+            if (!adjList[edge.target]) adjList[edge.target] = {};
+            
+            adjList[edge.source][edge.target] = edge.weight;
+            adjList[edge.target][edge.source] = edge.weight;
+          });
+          
+          separateAdjacencyLists[floor] = adjList;
+          console.log(`✅ Floor ${floor} graph built with`, Object.keys(adjList).length, 'nodes');
+        });
+      }
+
       function buildAdjacencyList() {
-        adjacencyList = {};
-
-        // Initialize all nodes
-        graphData.nodes.forEach((node) => {
-          adjacencyList[node.id] = {};
-        });
-
-        // Add edges (bidirectional)
-        graphData.edges.forEach((edge) => {
-          adjacencyList[edge.source][edge.target] = edge.weight;
-          // Assuming undirected graph
-          adjacencyList[edge.target][edge.source] = edge.weight;
-        });
+        // Legacy function - now using buildSeparateGraphs
+        buildSeparateGraphs();
       }
 
       // ==================== POPULATE DROPDOWNS ====================
       
-      function populateDropdowns() {
-        // Build base -> variants map
-        baseToVariants = {};
-        graphData.nodes.forEach((node) => {
+      function updateStartNodes() {
+        const startFloor = document.getElementById("startFloor").value;
+        const startSelect = document.getElementById("startNode");
+        
+        if (!startFloor) {
+          startSelect.disabled = true;
+          startSelect.innerHTML = '<option value="">-- Select Floor First --</option>';
+          return;
+        }
+        
+        startSelect.disabled = false;
+        startSelect.innerHTML = '<option value="">-- Select Start --</option>';
+        
+        const floor = parseInt(startFloor);
+        const graph = floorGraphs[floor];
+        
+        // Build base -> variants map for this floor only
+        const baseToVariants = {};
+        graph.nodes.forEach((node) => {
           const id = node.id;
-          // treat trailing 'a', 'b', or 'c' (case-insensitive) as a door suffix
           const lastChar = id.slice(-1);
           let baseId = id;
           if (/^[abc]$/i.test(lastChar) && /^[A-Za-z0-9]+[abcABC]$/.test(id)) {
             baseId = id.slice(0, -1);
           }
+          
           if (!baseToVariants[baseId]) baseToVariants[baseId] = [];
           baseToVariants[baseId].push(id);
         });
-
-        const startSelect = document.getElementById("startNode");
-        const endSelect = document.getElementById("endNode");
-
-        // Reset selects
-        startSelect.innerHTML = '<option value="">-- Select Start --</option>';
-        endSelect.innerHTML = '<option value="">-- Select Destination --</option>';
-
-        // Sort base IDs
-        const sortedBases = Object.keys(baseToVariants).sort((a, b) =>
-          a.localeCompare(b)
-        );
-
+        
+        // Sort and add to dropdown
+        const sortedBases = Object.keys(baseToVariants).sort((a, b) => a.localeCompare(b));
+        
         sortedBases.forEach((baseId) => {
-          // Skip bases that start with 'H'
+          // Skip hallways
           if (baseId.startsWith("H")) return;
-
-          const variantSample = graphData.nodes.find(
-            (n) => n.id === baseToVariants[baseId][0]
-          );
-          const displayText = variantSample && variantSample.type
-            ? `${baseId} (${variantSample.type})`
-            : baseId;
-
-          const option1 = document.createElement("option");
-          option1.value = baseId;
-          option1.textContent = displayText;
-          startSelect.appendChild(option1);
-
-          const option2 = option1.cloneNode(true);
-          endSelect.appendChild(option2);
+          
+          const option = document.createElement("option");
+          option.value = baseId;
+          option.textContent = baseId;
+          startSelect.appendChild(option);
         });
+      }
+      
+      function updateEndNodes() {
+        const endFloor = document.getElementById("endFloor").value;
+        const endSelect = document.getElementById("endNode");
+        
+        if (!endFloor) {
+          endSelect.disabled = true;
+          endSelect.innerHTML = '<option value="">-- Select Floor First --</option>';
+          return;
+        }
+        
+        endSelect.disabled = false;
+        endSelect.innerHTML = '<option value="">-- Select Destination --</option>';
+        
+        const floor = parseInt(endFloor);
+        const graph = floorGraphs[floor];
+        
+        // Build base -> variants map for this floor only
+        const baseToVariants = {};
+        graph.nodes.forEach((node) => {
+          const id = node.id;
+          const lastChar = id.slice(-1);
+          let baseId = id;
+          if (/^[abc]$/i.test(lastChar) && /^[A-Za-z0-9]+[abcABC]$/.test(id)) {
+            baseId = id.slice(0, -1);
+          }
+          
+          if (!baseToVariants[baseId]) baseToVariants[baseId] = [];
+          baseToVariants[baseId].push(id);
+        });
+        
+        // Sort and add to dropdown
+        const sortedBases = Object.keys(baseToVariants).sort((a, b) => a.localeCompare(b));
+        
+        sortedBases.forEach((baseId) => {
+          // Skip hallways
+          if (baseId.startsWith("H")) return;
+          
+          const option = document.createElement("option");
+          option.value = baseId;
+          option.textContent = baseId;
+          endSelect.appendChild(option);
+        });
+      }
+      
+      function populateDropdowns() {
+        // Legacy - now using updateStartNodes and updateEndNodes
       }
 
       // ==================== FIND PATH ====================
      
       function findPath() {
+        const startFloorNum = parseInt(document.getElementById("startFloor").value);
+        const endFloorNum = parseInt(document.getElementById("endFloor").value);
         const startNode = document.getElementById("startNode").value;
         const endNode = document.getElementById("endNode").value;
 
         // Validation
+        if (isNaN(startFloorNum) || isNaN(endFloorNum)) {
+          showMessage("error", "Please select both start and destination floors");
+          return;
+        }
+        
         if (!startNode || !endNode) {
-          showMessage(
-            "error",
-            "Please select both start and destination points"
-          );
+          showMessage("error", "Please select both start and destination points");
           return;
         }
 
-        if (startNode === endNode) {
+        if (startFloorNum === endFloorNum && startNode === endNode) {
           showMessage("error", "Start and destination cannot be the same");
           return;
         }
 
-        // Resolve selected base IDs to actual variant node IDs
-        const startCandidates = baseToVariants[startNode]
-          ? [...baseToVariants[startNode]]
-          : [startNode];
-        const endCandidates = baseToVariants[endNode]
-          ? [...baseToVariants[endNode]]
-          : [endNode];
+        // Get actual node IDs (resolve variants)
+        const startGraph = floorGraphs[startFloorNum];
+        const endGraph = floorGraphs[endFloorNum];
+        
+        const startCandidates = getNodeVariants(startNode, startGraph);
+        const endCandidates = getNodeVariants(endNode, endGraph);
 
-        // Try all combinations and pick the shortest resulting path
-        let bestResult = { path: [], distance: Infinity, start: null, end: null };
+        if (startCandidates.length === 0 || endCandidates.length === 0) {
+          showMessage("error", "Invalid node selection");
+          return;
+        }
+
+        // CASE 1: Same floor navigation - simple pathfinding
+        if (startFloorNum === endFloorNum) {
+          findSameFloorPath(startFloorNum, startCandidates, endCandidates);
+        } 
+        // CASE 2: Cross-floor navigation - must use stairs/elevators
+        else {
+          findCrossFloorPath(startFloorNum, endFloorNum, startCandidates, endCandidates);
+        }
+      }
+
+      // Helper to get all variant node IDs for a base ID
+      function getNodeVariants(baseId, graph) {
+        const variants = [];
+        graph.nodes.forEach(node => {
+          const id = node.id;
+          const lastChar = id.slice(-1);
+          let nodeBase = id;
+          if (/^[abc]$/i.test(lastChar) && /^[A-Za-z0-9]+[abcABC]$/.test(id)) {
+            nodeBase = id.slice(0, -1);
+          }
+          if (nodeBase === baseId) {
+            variants.push(id);
+          }
+        });
+        return variants;
+      }
+
+      // Find path on same floor
+      function findSameFloorPath(floor, startCandidates, endCandidates) {
+        const adjList = separateAdjacencyLists[floor];
+        let bestResult = { path: [], distance: Infinity };
 
         for (let s of startCandidates) {
-          for (let t of endCandidates) {
-            // If the graph does not contain the candidate (defensive)
-            if (!adjacencyList[s] || !adjacencyList[t]) continue;
-            const result = dijkstra(adjacencyList, s, t);
+          for (let e of endCandidates) {
+            if (!adjList[s] || !adjList[e]) continue;
+            const result = dijkstra(adjList, s, e);
             if (result.path.length > 0 && result.distance < bestResult.distance) {
-              bestResult = { path: result.path, distance: result.distance, start: s, end: t };
+              bestResult = result;
             }
           }
         }
@@ -1046,24 +1199,143 @@
         if (bestResult.path.length === 0) {
           showMessage("error", "No path found between these locations");
           currentPath = [];
+          fullPath = [];
+          floorTransitions = [];
           draw();
           return;
         }
 
-        // Success - store chosen variant path
+        // Set current floor and display path
+        switchToFloor(floor);
         currentPath = bestResult.path;
+        fullPath = bestResult.path;
+        floorTransitions = [];
         currentPathDistance = bestResult.distance;
-        showMessage(
-          "success",
-          `✅ Path found! Distance: ${bestResult.distance.toFixed(2)} units`
-        );
+        
+        showMessage("success", `✅ Path found! Distance: ${bestResult.distance.toFixed(2)} units`);
         showDirections();
-        
-        // Auto-zoom to starting point
         zoomToStartingPoint();
-        
         draw();
-}
+      }
+
+      // Find path across floors using stairs/elevators
+      function findCrossFloorPath(startFloor, endFloor, startCandidates, endCandidates) {
+        // Get all stairs and elevators on each floor
+        const startFloorTransitions = getTransitionNodes(startFloor);
+        const endFloorTransitions = getTransitionNodes(endFloor);
+        
+        if (startFloorTransitions.length === 0 || endFloorTransitions.length === 0) {
+          showMessage("error", "No stairs or elevators found to connect floors");
+          currentPath = [];
+          fullPath = [];
+          floorTransitions = [];
+          draw();
+          return;
+        }
+
+        // Find best path: start -> transition on floor1 -> transition on floor2 -> end
+        let bestTotalPath = [];
+        let bestTotalDistance = Infinity;
+        let bestTransition = null;
+
+        for (let startId of startCandidates) {
+          for (let endId of endCandidates) {
+            for (let trans1 of startFloorTransitions) {
+              for (let trans2 of endFloorTransitions) {
+                // Check if these transitions are connected (same base ID)
+                if (!areTransitionsConnected(trans1, trans2)) continue;
+
+                // Path segment 1: start -> transition on start floor
+                const adjList1 = separateAdjacencyLists[startFloor];
+                const seg1 = dijkstra(adjList1, startId, trans1.id);
+                if (seg1.path.length === 0) continue;
+
+                // Path segment 2: transition on end floor -> end
+                const adjList2 = separateAdjacencyLists[endFloor];
+                const seg2 = dijkstra(adjList2, trans2.id, endId);
+                if (seg2.path.length === 0) continue;
+
+                // Calculate total distance (including transition weight)
+                const transitionWeight = trans1.type === 'elevator' ? 15 : 30;
+                const totalDistance = seg1.distance + transitionWeight + seg2.distance;
+
+                if (totalDistance < bestTotalDistance) {
+                  bestTotalDistance = totalDistance;
+                  bestTotalPath = [...seg1.path, ...seg2.path.slice(1)]; // Avoid duplicate transition node
+                  bestTransition = { node: trans1.id, fromFloor: startFloor, toFloor: endFloor };
+                }
+              }
+            }
+          }
+        }
+
+        if (bestTotalPath.length === 0) {
+          showMessage("error", "No path found between floors");
+          currentPath = [];
+          fullPath = [];
+          floorTransitions = [];
+          draw();
+          return;
+        }
+
+        // Store the full path and transition point
+        fullPath = bestTotalPath;
+        currentPathDistance = bestTotalDistance;
+        floorTransitions = [bestTransition];
+        
+        // Show path on starting floor
+        switchToFloor(startFloor);
+        updateCurrentPathForFloor(startFloor);
+        
+        showMessage("success", `✅ Path found! Distance: ${bestTotalDistance.toFixed(2)} units (crosses floors)`);
+        showDirections();
+        zoomToStartingPoint();
+        draw();
+      }
+
+      // Get all transition nodes (stairs/elevators) on a floor
+      function getTransitionNodes(floor) {
+        const graph = floorGraphs[floor];
+        const transitions = [];
+        
+        graph.nodes.forEach(node => {
+          if (node.type === 'stairs' || node.type === 'elevator') {
+            transitions.push(node);
+          }
+        });
+        
+        return transitions;
+      }
+
+      // Check if two transition nodes are connected (same base ID)
+      function areTransitionsConnected(trans1, trans2) {
+        // They should have the same base ID (e.g., ST01, ET01)
+        return trans1.id === trans2.id;
+      }
+
+      // Update current path to show only nodes on specified floor
+      function updateCurrentPathForFloor(floor) {
+        if (floorTransitions.length === 0) {
+          // Same floor path
+          currentPath = fullPath;
+          return;
+        }
+        
+        // Cross-floor path - show segment for current floor
+        const transition = floorTransitions[0];
+        const transitionNodeId = transition.node;
+        const transitionIndex = fullPath.indexOf(transitionNodeId);
+        
+        if (floor === transition.fromFloor) {
+          // Show start to transition
+          currentPath = fullPath.slice(0, transitionIndex + 1);
+        } else if (floor === transition.toFloor) {
+          // Show transition to end
+          currentPath = fullPath.slice(transitionIndex);
+        } else {
+          currentPath = [];
+        }
+      }
 
       // ==================== SHOW DIRECTIONS ====================
       function showDirections() {
@@ -1076,11 +1348,121 @@
       // ==================== CLEAR PATH ====================
       function clearPath() {
         currentPath = [];
+        fullPath = [];
+        floorTransitions = [];
         currentPathDistance = 0;
         document.getElementById("directionsSection").style.display = "none";
+        document.getElementById("startFloor").value = "";
+        document.getElementById("endFloor").value = "";
         document.getElementById("startNode").value = "";
+        document.getElementById("startNode").disabled = true;
+        document.getElementById("startNode").innerHTML = '<option value="">-- Select Floor First --</option>';
         document.getElementById("endNode").value = "";
+        document.getElementById("endNode").disabled = true;
+        document.getElementById("endNode").innerHTML = '<option value="">-- Select Floor First --</option>';
         hideMessage();
+        draw();
+      }
+
+      // ==================== FLOOR SWITCHING ====================
+      function addFloorSwitcher() {
+        const container = document.querySelector('.map-container');
+        
+        const floorSwitcher = document.createElement('div');
+        floorSwitcher.id = 'floorSwitcher';
+        floorSwitcher.style.cssText = `
+          position: absolute;
+          bottom: 20px;
+          left: 50%;
+          transform: translateX(-50%);
+          display: flex;
+          gap: 10px;
+          z-index: 100;
+          background: white;
+          padding: 10px;
+          border-radius: 8px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        `;
+        
+        // Floor 0 button
+        const btn0 = document.createElement('button');
+        btn0.textContent = 'Plaza Floor';
+        btn0.className = 'zoom-btn';
+        btn0.style.width = 'auto';
+        btn0.style.padding = '10px 20px';
+        btn0.style.background = '#667eea';
+        btn0.style.color = 'white';
+        btn0.onclick = () => switchToFloor(0);
+        
+        // Floor 1 button
+        const btn1 = document.createElement('button');
+        btn1.textContent = 'First Floor';
+        btn1.className = 'zoom-btn';
+        btn1.style.width = 'auto';
+        btn1.style.padding = '10px 20px';
+        btn1.onclick = () => switchToFloor(1);
+        
+        floorSwitcher.appendChild(btn0);
+        floorSwitcher.appendChild(btn1);
+        
+        container.appendChild(floorSwitcher);
+      }
+
+      function switchToFloor(floor) {
+        if (!floorImages[floor]) {
+          alert(`Floor ${floor} image not loaded yet`);
+          return;
+        }
+        
+        currentFloor = floor;
+        backgroundImage = floorImages[floor];
+        graphData = floorGraphs[floor];
+        
+        // Update floor switcher buttons
+        const buttons = document.querySelectorAll('#floorSwitcher button');
+        buttons.forEach((btn, index) => {
+          if (index === floor) {
+            btn.style.background = '#667eea';
+            btn.style.color = 'white';
+          } else {
+            btn.style.background = 'white';
+            btn.style.color = '#667eea';
+          }
+        });
+        
+        // Update current path for this floor
+        if (fullPath.length > 0) {
+          updateCurrentPathForFloor(floor);
+        }
+        
+        // Recalculate scale for new image
+        const scaleX = canvas.width / backgroundImage.width;
+        const scaleY = canvas.height / backgroundImage.height;
+        minScale = Math.min(scaleX, scaleY);
+        
+        // Auto-zoom to starting point of path on this floor
+        if (currentPath.length > 0) {
+          const startNodeId = currentPath[0];
+          const startNode = graphData.nodes.find((n) => n.id === startNodeId);
+          
+          if (startNode && startNode.x) {
+            // Set zoom level to 1.8x for good detail
+            scale = 1.8;
+            
+            // Center the view on the starting point of this floor's path
+            offsetX = canvas.width / 2 - startNode.x * scale;
+            offsetY = canvas.height / 2 - startNode.y * scale;
+            
+            // Constrain to keep within image boundaries
+            constrainPan();
+          }
+        } else {
+          // No path - reset to default view
+          scale = minScale;
+          offsetX = (canvas.width - backgroundImage.width * scale) / 2;
+          offsetY = (canvas.height - backgroundImage.height * scale) / 2;
+        }
+        
         draw();
       }
 
@@ -1236,9 +1618,91 @@
             ctx.fillText(node.id, node.x, node.y - 20 / scale);
           }
         });
+
+        // Draw floor transition indicators
+        // Only show at the LAST node in current path if there's a transition to another floor
+        if (fullPath.length > 0 && floorTransitions.length > 0) {
+          const transition = floorTransitions[0];
+          
+          // Only draw if we're on the floor that has the transition point
+          if (currentFloor === transition.fromFloor && currentPath.length > 0) {
+            const lastNodeId = currentPath[currentPath.length - 1];
+            
+            // Only show transition button if last node IS the transition point
+            if (lastNodeId === transition.node) {
+              const node = graphData.nodes.find(n => n.id === lastNodeId);
+              if (node && node.x) {
+                // Draw transition icon (up/down arrow)
+                const isGoingUp = transition.toFloor > transition.fromFloor;
+                const arrowText = isGoingUp ? '▲' : '▼';
+                const buttonColor = isGoingUp ? '#4CAF50' : '#FF9800';
+                
+                // Draw circle button
+                ctx.fillStyle = buttonColor;
+                ctx.strokeStyle = "#000";
+                ctx.lineWidth = 3 / scale;
+                ctx.beginPath();
+                ctx.arc(node.x, node.y, 20 / scale, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                
+                // Draw arrow
+                ctx.fillStyle = "#FFF";
+                ctx.font = `bold ${24 / scale}px Arial`;
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText(arrowText, node.x, node.y);
+                
+                // Draw label
+                ctx.fillStyle = "#000";
+                ctx.font = `bold ${14 / scale}px Arial`;
+                ctx.textBaseline = "top";
+                const floorName = transition.toFloor === 0 ? 'Plaza' : `Floor ${transition.toFloor}`;
+                ctx.fillText(`Go to ${floorName}`, node.x, node.y + 25 / scale);
+              }
+            }
+          }
+        }
       }
 
       // ==================== ZOOM & PAN ====================
+      // Helper function to check if click is on floor transition button
+      function checkFloorTransitionClick(e) {
+        if (floorTransitions.length === 0 || currentPath.length === 0) return;
+        
+        const transition = floorTransitions[0];
+        
+        // Only check if we're on the from-floor
+        if (currentFloor !== transition.fromFloor) return;
+        
+        const lastNodeId = currentPath[currentPath.length - 1];
+        
+        // Only check if last node is the transition point
+        if (lastNodeId !== transition.node) return;
+        
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        
+        // Convert to world coordinates
+        const worldX = (mouseX - offsetX) / scale;
+        const worldY = (mouseY - offsetY) / scale;
+        
+        // Get the transition node position
+        const node = graphData.nodes.find(n => n.id === lastNodeId);
+        if (node && node.x) {
+          const distance = Math.sqrt(
+            Math.pow(worldX - node.x, 2) + Math.pow(worldY - node.y, 2)
+          );
+          
+          // Click radius (20 units in world coordinates)
+          if (distance < 20 / scale * 50) {
+            // Clicked on transition button!
+            switchToFloor(transition.toFloor);
+          }
+        }
+      }
+
       // Helper function to constrain panning within image boundaries
       function constrainPan() {
         const scaledWidth = backgroundImage.width * scale;
@@ -1300,7 +1764,11 @@
           }
         });
 
-        canvas.addEventListener("mouseup", () => {
+        canvas.addEventListener("mouseup", (e) => {
+          if (!hasPanned) {
+            // Click detected - check if clicked on floor transition button
+            checkFloorTransitionClick(e);
+          }
           isPanning = false;
           canvas.style.cursor = "default";
         });
