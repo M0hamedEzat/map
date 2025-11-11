@@ -4,7 +4,7 @@ const GRAPH_DATA =
         "imageWidth": 5769,
         "imageHeight": 4967,
         "floor": 0,
-        "created": "2025-11-10T22:46:40.116Z",
+        "created": "2025-11-11T13:15:13.141Z",
         "description": "Graph with absolute X,Y,Z coordinates"
     },
     "nodes": [
@@ -2624,6 +2624,20 @@ const GRAPH_DATA =
             "type": "classroom",
             "x": 2779,
             "y": 574,
+            "z": 0
+        },
+        {
+            "id": "Hex1",
+            "type": "hallway",
+            "x": 4572,
+            "y": 4767,
+            "z": 0
+        },
+        {
+            "id": "Hex2",
+            "type": "hallway",
+            "x": 4417,
+            "y": 2274,
             "z": 0
         }
     ],
@@ -6507,6 +6521,76 @@ const GRAPH_DATA =
             "source": "CP44",
             "target": "H43t44a",
             "weight": 50
+        },
+        {
+            "source": "E6",
+            "target": "E4",
+            "weight": 565
+        },
+        {
+            "source": "E4",
+            "target": "E6",
+            "weight": 565
+        },
+        {
+            "source": "E5",
+            "target": "E4",
+            "weight": 395
+        },
+        {
+            "source": "E4",
+            "target": "E5",
+            "weight": 395
+        },
+        {
+            "source": "E3",
+            "target": "E2",
+            "weight": 417
+        },
+        {
+            "source": "E2",
+            "target": "E3",
+            "weight": 417
+        },
+        {
+            "source": "E1",
+            "target": "Hex1",
+            "weight": 279
+        },
+        {
+            "source": "Hex1",
+            "target": "E1",
+            "weight": 279
+        },
+        {
+            "source": "Hex1",
+            "target": "E2",
+            "weight": 921
+        },
+        {
+            "source": "E2",
+            "target": "Hex1",
+            "weight": 921
+        },
+        {
+            "source": "Hex2",
+            "target": "E5",
+            "weight": 185
+        },
+        {
+            "source": "E5",
+            "target": "Hex2",
+            "weight": 185
+        },
+        {
+            "source": "Hex2",
+            "target": "E6",
+            "weight": 303
+        },
+        {
+            "source": "E6",
+            "target": "Hex2",
+            "weight": 303
         }
     ]
 };
