@@ -1387,7 +1387,7 @@
         // Floor 0 button
         const btn0 = document.createElement('button');
         btn0.textContent = 'Plaza Floor';
-        btn0.className = 'zoom-btn';
+        btn0.className = 'zoom-btn floor-btn';
         btn0.style.width = 'auto';
         btn0.style.padding = '10px 20px';
         btn0.style.background = '#667eea';
@@ -1397,7 +1397,7 @@
         // Floor 1 button
         const btn1 = document.createElement('button');
         btn1.textContent = 'First Floor';
-        btn1.className = 'zoom-btn';
+        btn1.className = 'zoom-btn floor-btn';
         btn1.style.width = 'auto';
         btn1.style.padding = '10px 20px';
         btn1.onclick = () => switchToFloor(1);
@@ -1406,6 +1406,25 @@
         floorSwitcher.appendChild(btn1);
         
         container.appendChild(floorSwitcher);
+        
+        // Add mobile-specific styling
+        const style = document.createElement('style');
+        style.textContent = `
+          @media (max-width: 768px) {
+            #floorSwitcher {
+              bottom: 10px !important;
+              padding: 6px !important;
+              gap: 6px !important;
+            }
+            #floorSwitcher .floor-btn {
+              padding: 6px 12px !important;
+              font-size: 12px !important;
+              min-width: 70px !important;
+              height: 32px !important;
+            }
+          }
+        `;
+        document.head.appendChild(style);
       }
 
       function switchToFloor(floor) {
@@ -1803,12 +1822,14 @@
         let lastTouchX = 0;
         let lastTouchY = 0;
         let lastTouchAngle = 0;
+        let touchHasPanned = false;
 
         canvas.addEventListener("touchstart", (e) => {
           e.preventDefault();
           if (e.touches.length === 1) {
             // Single touch - pan
             isPanning = true;
+            touchHasPanned = false;
             const touch = e.touches[0];
             lastTouchX = touch.clientX;
             lastTouchY = touch.clientY;
@@ -1838,6 +1859,11 @@
             // Calculate the movement delta
             const deltaX = touch.clientX - lastTouchX;
             const deltaY = touch.clientY - lastTouchY;
+            
+            // Check if user has moved enough to count as panning (threshold: 5px)
+            if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
+              touchHasPanned = true;
+            }
             
             // Rotate the delta based on current rotation
             const rotRad = -rotation * Math.PI / 180;
@@ -1907,7 +1933,20 @@
 
         canvas.addEventListener("touchend", (e) => {
           e.preventDefault();
+          
+          // Check for tap (no panning occurred)
+          if (e.touches.length === 0 && !touchHasPanned && isPanning) {
+            // Convert the last touch position to a click event for transition button
+            const fakeEvent = {
+              clientX: lastTouchX,
+              clientY: lastTouchY
+            };
+            checkFloorTransitionClick(fakeEvent);
+          }
+          
           isPanning = false;
+          touchHasPanned = false;
+          
           if (e.touches.length < 2) {
             lastTouchDistance = 0;
             lastTouchAngle = 0;
