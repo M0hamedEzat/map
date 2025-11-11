@@ -606,6 +606,15 @@
           <div class="control-section" id="routeSection">
             <h3>📍 Select Your Route</h3>
 
+            <!-- Floor Transition Button (in sidebar) -->
+            <div id="transitionButton" style="display: none; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
+              <div style="font-size: 32px; margin-bottom: 8px;" id="transitionArrow">▲</div>
+              <div style="font-size: 14px; font-weight: bold; margin-bottom: 8px;" id="transitionTitle">Continue to Next Floor</div>
+              <div style="font-size: 12px; margin-bottom: 12px; opacity: 0.9;" id="transitionMessage">At <span id="transitionNodeName"></span></div>
+              <button onclick="goToNextFloor()" id="goButton" style="background: white; color: #667eea; border: none; padding: 10px 20px; border-radius: 6px; font-size: 14px; cursor: pointer; font-weight: bold; width: 100%; margin-bottom: 8px;">Go to <span id="nextFloorName"></span> ▶</button>
+              <button onclick="hideTransitionButton()" id="cancelButton" style="background: rgba(255,255,255,0.2); color: white; border: none; padding: 8px 16px; border-radius: 6px; font-size: 12px; cursor: pointer; width: 100%;">Stay Here</button>
+            </div>
+
             <div class="input-group">
               <label for="startFloor">Starting Floor:</label>
               <select id="startFloor" onchange="updateStartNodes()">
@@ -1639,87 +1648,67 @@
         });
 
         // Draw floor transition indicators
-        // Only show at the LAST node in current path if there's a transition to another floor
+        // Show fixed button when at the LAST node in current path if there's a transition to another floor
         if (fullPath.length > 0 && floorTransitions.length > 0) {
           const transition = floorTransitions[0];
           
-          // Only draw if we're on the floor that has the transition point
+          // Only show if we're on the floor that has the transition point
           if (currentFloor === transition.fromFloor && currentPath.length > 0) {
             const lastNodeId = currentPath[currentPath.length - 1];
             
             // Only show transition button if last node IS the transition point
             if (lastNodeId === transition.node) {
-              const node = graphData.nodes.find(n => n.id === lastNodeId);
-              if (node && node.x) {
-                // Draw transition icon (up/down arrow)
-                const isGoingUp = transition.toFloor > transition.fromFloor;
-                const arrowText = isGoingUp ? '▲' : '▼';
-                const buttonColor = isGoingUp ? '#4CAF50' : '#FF9800';
-                
-                // Draw circle button
-                ctx.fillStyle = buttonColor;
-                ctx.strokeStyle = "#000";
-                ctx.lineWidth = 3 / scale;
-                ctx.beginPath();
-                ctx.arc(node.x, node.y, 20 / scale, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.stroke();
-                
-                // Draw arrow
-                ctx.fillStyle = "#FFF";
-                ctx.font = `bold ${24 / scale}px Arial`;
-                ctx.textAlign = "center";
-                ctx.textBaseline = "middle";
-                ctx.fillText(arrowText, node.x, node.y);
-                
-                // Draw label
-                ctx.fillStyle = "#000";
-                ctx.font = `bold ${14 / scale}px Arial`;
-                ctx.textBaseline = "top";
-                const floorName = transition.toFloor === 0 ? 'Plaza' : `Floor ${transition.toFloor}`;
-                ctx.fillText(`Go to ${floorName}`, node.x, node.y + 25 / scale);
-              }
+              showTransitionButton(transition);
+            } else {
+              hideTransitionButton();
             }
+          } else {
+            hideTransitionButton();
           }
+        } else {
+          hideTransitionButton();
+        }
+      }
+
+      // ==================== FLOOR TRANSITION BUTTON ====================
+      let pendingTransition = null;
+
+      function showTransitionButton(transition) {
+        pendingTransition = transition;
+        const button = document.getElementById('transitionButton');
+        const nodeNameSpan = document.getElementById('transitionNodeName');
+        const nextFloorSpan = document.getElementById('nextFloorName');
+        const arrowDiv = document.getElementById('transitionArrow');
+        
+        // Update button content
+        nodeNameSpan.textContent = transition.node;
+        const isGoingUp = transition.toFloor > transition.fromFloor;
+        arrowDiv.textContent = isGoingUp ? '▲' : '▼';
+        arrowDiv.style.color = isGoingUp ? '#4CAF50' : '#FF9800';
+        
+        const floorName = transition.toFloor === 0 ? 'Plaza Floor' : `Floor ${transition.toFloor}`;
+        nextFloorSpan.textContent = floorName;
+        
+        button.style.display = 'block';
+      }
+
+      function hideTransitionButton() {
+        const button = document.getElementById('transitionButton');
+        button.style.display = 'none';
+        pendingTransition = null;
+      }
+
+      function goToNextFloor() {
+        if (pendingTransition) {
+          switchToFloor(pendingTransition.toFloor);
+          hideTransitionButton();
         }
       }
 
       // ==================== ZOOM & PAN ====================
       // Helper function to check if click is on floor transition button
       function checkFloorTransitionClick(e) {
-        if (floorTransitions.length === 0 || currentPath.length === 0) return;
-        
-        const transition = floorTransitions[0];
-        
-        // Only check if we're on the from-floor
-        if (currentFloor !== transition.fromFloor) return;
-        
-        const lastNodeId = currentPath[currentPath.length - 1];
-        
-        // Only check if last node is the transition point
-        if (lastNodeId !== transition.node) return;
-        
-        const rect = canvas.getBoundingClientRect();
-        const mouseX = e.clientX - rect.left;
-        const mouseY = e.clientY - rect.top;
-        
-        // Convert to world coordinates
-        const worldX = (mouseX - offsetX) / scale;
-        const worldY = (mouseY - offsetY) / scale;
-        
-        // Get the transition node position
-        const node = graphData.nodes.find(n => n.id === lastNodeId);
-        if (node && node.x) {
-          const distance = Math.sqrt(
-            Math.pow(worldX - node.x, 2) + Math.pow(worldY - node.y, 2)
-          );
-          
-          // Click radius (20 units in world coordinates)
-          if (distance < 20 / scale * 50) {
-            // Clicked on transition button!
-            switchToFloor(transition.toFloor);
-          }
-        }
+        // No longer needed - using fixed button instead
       }
 
       // Helper function to constrain panning within image boundaries
@@ -1784,10 +1773,6 @@
         });
 
         canvas.addEventListener("mouseup", (e) => {
-          if (!hasPanned) {
-            // Click detected - check if clicked on floor transition button
-            checkFloorTransitionClick(e);
-          }
           isPanning = false;
           canvas.style.cursor = "default";
         });
@@ -1933,16 +1918,6 @@
 
         canvas.addEventListener("touchend", (e) => {
           e.preventDefault();
-          
-          // Check for tap (no panning occurred)
-          if (e.touches.length === 0 && !touchHasPanned && isPanning) {
-            // Convert the last touch position to a click event for transition button
-            const fakeEvent = {
-              clientX: lastTouchX,
-              clientY: lastTouchY
-            };
-            checkFloorTransitionClick(fakeEvent);
-          }
           
           isPanning = false;
           touchHasPanned = false;
