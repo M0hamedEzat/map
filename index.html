@@ -678,6 +678,12 @@
             <button class="zoom-btn" onclick="zoomOut()">−</button>
           </div>
 
+          <div class="rotation-controls" id="rotationControls" style="position: absolute; top: 20px; left: 20px; display: flex; flex-direction: column; gap: 10px; z-index: 100;">
+            <button class="zoom-btn" onclick="rotateLeft()" title="Rotate Left">↶</button>
+            <button class="zoom-btn" onclick="resetRotation()" title="Reset Rotation">⊕</button>
+            <button class="zoom-btn" onclick="rotateRight()" title="Rotate Right">↷</button>
+          </div>
+
                     
           <!-- Compass -->
           <div class="compass-container" id="compassContainer">
@@ -806,6 +812,7 @@
       let hasPanned = false;
       let startPanX = 0;
       let startPanY = 0;
+      let rotation = 0; // Map rotation in degrees
 
       // Node colors by type
       const nodeColors = {
@@ -1051,6 +1058,10 @@
           `✅ Path found! Distance: ${bestResult.distance.toFixed(2)} units`
         );
         showDirections();
+        
+        // Auto-zoom to starting point
+        zoomToStartingPoint();
+        
         draw();
 }
 
@@ -1071,6 +1082,28 @@
         document.getElementById("endNode").value = "";
         hideMessage();
         draw();
+      }
+
+      // ==================== ZOOM TO STARTING POINT ====================
+      function zoomToStartingPoint() {
+        if (currentPath.length === 0) return;
+        
+        // Get the starting node
+        const startNodeId = currentPath[0];
+        const startNode = graphData.nodes.find((n) => n.id === startNodeId);
+        
+        if (!startNode || !startNode.x) return;
+        
+        // Set zoom level to 2.5x for good detail
+        scale = 1.8;
+        
+        // Center the view on the starting point
+        // Calculate offsets to center the start node in the canvas
+        offsetX = canvas.width / 2 - startNode.x * scale;
+        offsetY = canvas.height / 2 - startNode.y * scale;
+        
+        // Constrain to keep within image boundaries
+        constrainPan();
       }
 
       // ==================== MESSAGES ====================
@@ -1097,7 +1130,18 @@
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+        // Apply transformations: translate to center, rotate, then scale and offset
+        ctx.translate(canvas.width / 2, canvas.height / 2);
+        ctx.rotate(rotation * Math.PI / 180);
+        ctx.translate(-canvas.width / 2, -canvas.height / 2);
         ctx.setTransform(scale, 0, 0, scale, offsetX, offsetY);
+        
+        // Apply rotation around the center of the canvas
+        const centerX = canvas.width / (2 * scale) - offsetX / scale;
+        const centerY = canvas.height / (2 * scale) - offsetY / scale;
+        ctx.translate(centerX, centerY);
+        ctx.rotate(rotation * Math.PI / 180);
+        ctx.translate(-centerX, -centerY);
 
         // Draw background image
         ctx.drawImage(backgroundImage, 0, 0);
@@ -1225,16 +1269,32 @@
           isPanning = true;
           hasPanned = false;
           const rect = canvas.getBoundingClientRect();
-          startPanX = e.clientX - offsetX;
-          startPanY = e.clientY - offsetY;
+          startPanX = e.clientX;
+          startPanY = e.clientY;
           canvas.style.cursor = "grabbing";
         });
 
         canvas.addEventListener("mousemove", (e) => {
           if (isPanning) {
             hasPanned = true;
-            offsetX = e.clientX - startPanX;
-            offsetY = e.clientY - startPanY;
+            
+            // Calculate the movement delta
+            const deltaX = e.clientX - startPanX;
+            const deltaY = e.clientY - startPanY;
+            
+            // Rotate the delta based on current rotation
+            const rotRad = -rotation * Math.PI / 180;
+            const rotatedDeltaX = deltaX * Math.cos(rotRad) - deltaY * Math.sin(rotRad);
+            const rotatedDeltaY = deltaX * Math.sin(rotRad) + deltaY * Math.cos(rotRad);
+            
+            // Apply the rotated delta
+            offsetX += rotatedDeltaX;
+            offsetY += rotatedDeltaY;
+            
+            // Update start position for next movement
+            startPanX = e.clientX;
+            startPanY = e.clientY;
+            
             constrainPan();
             draw();
           }
@@ -1274,6 +1334,7 @@
         let lastTouchDistance = 0;
         let lastTouchX = 0;
         let lastTouchY = 0;
+        let lastTouchAngle = 0;
 
         canvas.addEventListener("touchstart", (e) => {
           e.preventDefault();
@@ -1281,13 +1342,10 @@
             // Single touch - pan
             isPanning = true;
             const touch = e.touches[0];
-            const rect = canvas.getBoundingClientRect();
-            startPanX = touch.clientX - offsetX;
-            startPanY = touch.clientY - offsetY;
             lastTouchX = touch.clientX;
             lastTouchY = touch.clientY;
           } else if (e.touches.length === 2) {
-            // Two fingers - pinch zoom
+            // Two fingers - pinch zoom and rotate
             isPanning = false;
             const touch1 = e.touches[0];
             const touch2 = e.touches[1];
@@ -1295,26 +1353,53 @@
               touch2.clientX - touch1.clientX,
               touch2.clientY - touch1.clientY
             );
+            // Calculate initial angle for rotation
+            lastTouchAngle = Math.atan2(
+              touch2.clientY - touch1.clientY,
+              touch2.clientX - touch1.clientX
+            ) * 180 / Math.PI;
           }
         });
 
         canvas.addEventListener("touchmove", (e) => {
           e.preventDefault();
           if (e.touches.length === 1 && isPanning) {
-            // Pan
+            // Pan with rotation compensation
             const touch = e.touches[0];
-            offsetX = touch.clientX - startPanX;
-            offsetY = touch.clientY - startPanY;
+            
+            // Calculate the movement delta
+            const deltaX = touch.clientX - lastTouchX;
+            const deltaY = touch.clientY - lastTouchY;
+            
+            // Rotate the delta based on current rotation
+            const rotRad = -rotation * Math.PI / 180;
+            const rotatedDeltaX = deltaX * Math.cos(rotRad) - deltaY * Math.sin(rotRad);
+            const rotatedDeltaY = deltaX * Math.sin(rotRad) + deltaY * Math.cos(rotRad);
+            
+            // Apply the rotated delta
+            offsetX += rotatedDeltaX;
+            offsetY += rotatedDeltaY;
+            
+            // Update last touch position
+            lastTouchX = touch.clientX;
+            lastTouchY = touch.clientY;
+            
             constrainPan();
             draw();
           } else if (e.touches.length === 2) {
-            // Pinch zoom
+            // Pinch zoom and rotate
             const touch1 = e.touches[0];
             const touch2 = e.touches[1];
             const currentDistance = Math.hypot(
               touch2.clientX - touch1.clientX,
               touch2.clientY - touch1.clientY
             );
+            
+            // Calculate current angle for rotation
+            const currentAngle = Math.atan2(
+              touch2.clientY - touch1.clientY,
+              touch2.clientX - touch1.clientX
+            ) * 180 / Math.PI;
 
             if (lastTouchDistance > 0) {
               const rect = canvas.getBoundingClientRect();
@@ -1324,6 +1409,7 @@
               const worldX = (centerX - offsetX) / scale;
               const worldY = (centerY - offsetY) / scale;
 
+              // Apply zoom
               const zoomFactor = currentDistance / lastTouchDistance;
               scale *= zoomFactor;
               scale = Math.max(minScale, Math.min(5, scale));
@@ -1331,11 +1417,23 @@
               offsetX = centerX - worldX * scale;
               offsetY = centerY - worldY * scale;
 
+              // Apply rotation
+              let angleDelta = currentAngle - lastTouchAngle;
+              // Normalize angle to -180 to 180
+              if (angleDelta > 180) angleDelta -= 360;
+              if (angleDelta < -180) angleDelta += 360;
+              rotation += angleDelta;
+              
+              // Keep rotation in 0-360 range
+              rotation = rotation % 360;
+              if (rotation < 0) rotation += 360;
+
               constrainPan();
               draw();
             }
 
             lastTouchDistance = currentDistance;
+            lastTouchAngle = currentAngle;
           }
         });
 
@@ -1344,6 +1442,7 @@
           isPanning = false;
           if (e.touches.length < 2) {
             lastTouchDistance = 0;
+            lastTouchAngle = 0;
           }
         });
       }
@@ -1367,6 +1466,24 @@
         offsetX = (canvas.width - backgroundImage.width * scale) / 2;
         offsetY = (canvas.height - backgroundImage.height * scale) / 2;
         constrainPan();
+        draw();
+      }
+
+      function rotateLeft() {
+        rotation -= 15; // Rotate 15 degrees counter-clockwise
+        rotation = rotation % 360;
+        if (rotation < 0) rotation += 360;
+        draw();
+      }
+
+      function rotateRight() {
+        rotation += 15; // Rotate 15 degrees clockwise
+        rotation = rotation % 360;
+        draw();
+      }
+
+      function resetRotation() {
+        rotation = 0;
         draw();
       }
       
